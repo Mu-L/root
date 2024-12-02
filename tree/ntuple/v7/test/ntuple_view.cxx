@@ -57,6 +57,73 @@ TEST(RNTuple, View)
    EXPECT_EQ(3, n);
 }
 
+TEST(RNTuple, CollectionView)
+{
+   FileRaii fileGuard("test_ntuple_collection_view.root");
+
+   {
+      auto model = RNTupleModel::Create();
+      auto fieldJets = model->MakeField<std::vector<std::int32_t>>("jets");
+      *fieldJets = {1, 2, 3};
+
+      auto writer = RNTupleWriter::Recreate(std::move(model), "myNTuple", fileGuard.GetPath());
+      writer->Fill();
+      *fieldJets = {4, 5};
+      writer->Fill();
+      writer->CommitCluster();
+      fieldJets->clear();
+      writer->Fill();
+      *fieldJets = {6, 7, 8, 9};
+      writer->Fill();
+   }
+
+   auto reader = RNTupleReader::Open("myNTuple", fileGuard.GetPath());
+   ASSERT_EQ(4, reader->GetNEntries());
+   auto viewJets = reader->GetCollectionView("jets");
+   auto viewJetsItems = viewJets.GetView<std::int32_t>("_0");
+
+   // The call operator returns the size of the collection.
+   EXPECT_EQ(3, viewJets(0));
+   EXPECT_EQ(2, viewJets(1));
+   EXPECT_EQ(0, viewJets(2));
+   EXPECT_EQ(4, viewJets(3));
+   EXPECT_EQ(4, viewJets(RClusterIndex(1, 1)));
+
+   // Via the collection range, we can get the items.
+   auto range = viewJets.GetCollectionRange(1);
+   EXPECT_EQ(2, range.size());
+   EXPECT_EQ(RClusterIndex(0, 3), *range.begin());
+   EXPECT_EQ(RClusterIndex(0, 5), *range.end());
+
+   std::int32_t expected = 4;
+   for (auto &&index : range) {
+      EXPECT_EQ(expected, viewJetsItems(index));
+      expected++;
+   }
+
+   // The same items can be bulk-read.
+   auto bulk = viewJetsItems.CreateBulk();
+   auto mask = std::make_unique<bool[]>(range.size());
+   std::fill(mask.get(), mask.get() + range.size(), true);
+   std::int32_t *values = static_cast<std::int32_t *>(bulk.ReadBulk(*range.begin(), mask.get(), range.size()));
+   for (std::size_t i = 0; i < range.size(); i++) {
+      EXPECT_EQ(i + 4, values[i]);
+   }
+
+   // The pointer can be adopted by an RVec.
+   ROOT::RVec<std::int32_t> v(values, range.size());
+   ROOT::RVec<std::int32_t> expectedV = {4, 5};
+   EXPECT_TRUE(ROOT::VecOps::All(expectedV == v));
+
+   // Bulk reading can also adopt a provided buffer.
+   auto buffer = std::make_unique<std::int32_t[]>(range.size());
+   bulk.AdoptBuffer(buffer.get(), range.size());
+   bulk.ReadBulk(*range.begin(), mask.get(), range.size());
+   for (std::size_t i = 0; i < range.size(); i++) {
+      EXPECT_EQ(i + 4, buffer[i]);
+   }
+}
+
 TEST(RNTuple, ViewCast)
 {
    FileRaii fileGuard("test_ntuple_view_cast.root");

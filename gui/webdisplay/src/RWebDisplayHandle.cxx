@@ -331,8 +331,16 @@ RWebDisplayHandle::BrowserCreator::Display(const RWebDisplayArgs &args)
 
       R__LOG_DEBUG(0, WebGUILog()) << "Show web window in browser with posix_spawn:\n" << fProg << " " << exec;
 
+      posix_spawn_file_actions_t action;
+      posix_spawn_file_actions_init(&action);
+      posix_spawn_file_actions_addopen (&action, STDOUT_FILENO, "/dev/null", O_WRONLY|O_APPEND, 0);
+      posix_spawn_file_actions_addopen (&action, STDERR_FILENO, "/dev/null", O_WRONLY|O_APPEND, 0);
+
       pid_t pid;
-      int status = posix_spawn(&pid, argv[0], nullptr, nullptr, argv.data(), nullptr);
+      int status = posix_spawn(&pid, argv[0], &action, nullptr, argv.data(), nullptr);
+
+      posix_spawn_file_actions_destroy(&action);
+
       if (status != 0) {
          if (!tmpfile.empty())
             gSystem->Unlink(tmpfile.c_str());
@@ -511,11 +519,11 @@ RWebDisplayHandle::ChromeCreator::ChromeCreator(bool _edge) : BrowserCreator(tru
    if (use_normal) {
       // old browser with standard headless mode
       fBatchExec = gEnv->GetValue((fEnvPrefix + "Batch").c_str(), "$prog --headless --no-sandbox --disable-extensions --disable-audio-output $geometry --dump-dom $url 2>/dev/null");
-      fHeadlessExec = gEnv->GetValue((fEnvPrefix + "Headless").c_str(), "$prog --headless --no-sandbox --disable-extensions --disable-audio-output $geometry \'$url\' >/dev/null 2>/dev/null &");
+      fHeadlessExec = gEnv->GetValue((fEnvPrefix + "Headless").c_str(), "fork:--headless --no-sandbox --disable-extensions --disable-audio-output $geometry $url");
    } else {
       // newer version with headless=new mode
       fBatchExec = gEnv->GetValue((fEnvPrefix + "Batch").c_str(), "$prog --headless=new --no-sandbox --disable-extensions --disable-audio-output $geometry --dump-dom $url 2>/dev/null");
-      fHeadlessExec = gEnv->GetValue((fEnvPrefix + "Headless").c_str(), "$prog --headless=new --no-sandbox --disable-extensions --disable-audio-output $geometry \'$url\' >/dev/null 2>/dev/null &");
+      fHeadlessExec = gEnv->GetValue((fEnvPrefix + "Headless").c_str(), "fork:--headless=new --no-sandbox --disable-extensions --disable-audio-output $geometry $url");
    }
    fExec = gEnv->GetValue((fEnvPrefix + "Interactive").c_str(), "$prog $geometry --new-window --app=\'$url\' >/dev/null 2>/dev/null &");
 #endif

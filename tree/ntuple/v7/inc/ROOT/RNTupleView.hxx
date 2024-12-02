@@ -68,9 +68,9 @@ public:
    };
 
    RNTupleGlobalRange(NTupleSize_t start, NTupleSize_t end) : fStart(start), fEnd(end) {}
-   RIterator begin() { return RIterator(fStart); }
-   RIterator end() { return RIterator(fEnd); }
-   NTupleSize_t size() { return fEnd - fStart; }
+   RIterator begin() const { return RIterator(fStart); }
+   RIterator end() const { return RIterator(fEnd); }
+   NTupleSize_t size() const { return fEnd - fStart; }
    bool IsValid() const { return (fStart != kInvalidNTupleIndex) && (fEnd != kInvalidNTupleIndex); }
 };
 
@@ -113,8 +113,9 @@ public:
 
    RNTupleClusterRange(DescriptorId_t clusterId, ClusterSize_t::ValueType start, ClusterSize_t::ValueType end)
       : fClusterId(clusterId), fStart(start), fEnd(end) {}
-   RIterator begin() { return RIterator(RClusterIndex(fClusterId, fStart)); }
-   RIterator end() { return RIterator(RClusterIndex(fClusterId, fEnd)); }
+   RIterator begin() const { return RIterator(RClusterIndex(fClusterId, fStart)); }
+   RIterator end() const { return RIterator(RClusterIndex(fClusterId, fEnd)); }
+   NTupleSize_t size() const { return fEnd - fStart; }
 };
 
 namespace Internal {
@@ -190,6 +191,8 @@ public:
    ~RNTupleViewBase() = default;
 
    const RFieldBase &GetField() const { return *fField; }
+   RFieldBase::RBulk CreateBulk() { return fField->CreateBulk(); }
+
    const RFieldBase::RValue &GetValue() const { return fValue; }
    RNTupleGlobalRange GetFieldRange() const
    {
