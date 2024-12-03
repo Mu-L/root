@@ -289,6 +289,8 @@ private:
 
    void EnsureCurrentColumnWidth(size_t w);
 
+   std::string AsStringInternal(bool considerDots) const;
+
 public:
    ////////////////////////////////////////////////////////////////////////////
    /// Creates an RDisplay to print the event values

@@ -14,9 +14,13 @@ class RNTupleBasics(unittest.TestCase):
 
         model = RNTupleModel.Create()
         model.MakeField["int"]("f")
-        writer = RNTupleWriter.Recreate(model, "ntpl", "test_ntuple_py_write_read.root")
-        writer.Fill()
-        del writer
+        with RNTupleWriter.Recreate(model, "ntpl", "test_ntuple_py_write_read.root") as writer:
+            entry = writer.CreateEntry()
+            entry["f"] = 42
+            writer.Fill(entry)
 
         reader = RNTupleReader.Open("ntpl", "test_ntuple_py_write_read.root")
         self.assertEqual(reader.GetNEntries(), 1)
+        entry = reader.GetModel().CreateEntry()
+        reader.LoadEntry(0, entry)
+        self.assertEqual(entry["f"], 42)

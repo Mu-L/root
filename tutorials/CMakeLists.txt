@@ -62,16 +62,16 @@ ACLiC.LinkLibs:  1
 ")
 
 #---Tutorials that need substantial network to work------------------
-set(need_network dataframe/df027_SQliteDependencyOverVersion.C)
+set(need_network analysis/dataframe/df027_SQliteDependencyOverVersion.C)
 
 #---Tutorials disabled depending on the build components-------------
 
 if(NOT clad)
-  set(clad_veto fit/minuit2GausFit.C
+  set(clad_veto math/fit/minuit2GausFit.C
                 # TODO: the next veto should not be necessary!
                 # The tutorial should also work without clad.
                 # See https://github.com/root-project/root/issues/15091.
-                fit/exampleFit3D.C
+                math/fit/exampleFit3D.C
   )
 endif()
 
@@ -83,10 +83,10 @@ if(MSVC AND NOT win_broken_tests)
   list(APPEND dataframe_veto tmva/RBatchGenerator_filters_vectors.py)
   # df036* and df037* seem to trigger OS errors when trying to delete the
   # test files created in the tutorials. It is unclear why.
-  list(APPEND dataframe_veto dataframe/df036_missingBranches.C)
-  list(APPEND dataframe_veto dataframe/df036_missingBranches.py)
-  list(APPEND dataframe_veto dataframe/df037_TTreeEventMatching.C)
-  list(APPEND dataframe_veto dataframe/df037_TTreeEventMatching.py)
+  list(APPEND dataframe_veto analysis/dataframe/df036_missingBranches.C)
+  list(APPEND dataframe_veto analysis/dataframe/df036_missingBranches.py)
+  list(APPEND dataframe_veto analysis/dataframe/df037_TTreeEventMatching.C)
+  list(APPEND dataframe_veto analysis/dataframe/df037_TTreeEventMatching.py)
   # The RooFit SBI tutorials fail on Windows for unknown reasons
   list(APPEND roofit_veto roofit/rf617_simulation_based_inference_multidimensional.py)
 endif()
@@ -99,7 +99,7 @@ list(APPEND roofit_veto roofit/rf615_simulation_based_inference.py)
 
 if (NOT dataframe)
     # RDataFrame
-    list(APPEND dataframe_veto dataframe/*.C dataframe/*.py)
+    list(APPEND dataframe_veto analysis/dataframe/*.C analysis/dataframe/*.py)
     # RDataFrame tutorial in graphs
     list(APPEND dataframe_veto graphs/timeSeriesFromCSV_TDF.C)
     # TMVA tutorials dependent on RDataFrame
@@ -117,17 +117,17 @@ endif()
 
 if(NOT sqlite)
     # RDF+SQlite tutorials
-    list(APPEND dataframe_veto dataframe/*SQlite*)
+    list(APPEND dataframe_veto analysis/dataframe/*SQlite*)
 endif()
 if(NOT davix)
-    list(APPEND dataframe_veto dataframe/df027_SQliteDependencyOverVersion.C)
-    list(APPEND dataframe_veto dataframe/df028_SQliteIPLocation.C)
-    list(APPEND dataframe_veto dataframe/df029_SQlitePlatformDistribution.C)
-    list(APPEND dataframe_veto dataframe/df030_SQliteVersionsOfROOT.C)
+    list(APPEND dataframe_veto analysis/dataframe/df027_SQliteDependencyOverVersion.C)
+    list(APPEND dataframe_veto analysis/dataframe/df028_SQliteIPLocation.C)
+    list(APPEND dataframe_veto analysis/dataframe/df029_SQlitePlatformDistribution.C)
+    list(APPEND dataframe_veto analysis/dataframe/df030_SQliteVersionsOfROOT.C)
 endif()
 
 if(MACOSX_VERSION VERSION_EQUAL 10.13)
-   list(APPEND dataframe_veto dataframe/df103_NanoAODHiggsAnalysis.*)
+   list(APPEND dataframe_veto analysis/dataframe/df103_NanoAODHiggsAnalysis.*)
 endif()
 
 if(NOT geom)
@@ -156,12 +156,12 @@ else()
 endif()
 
 if(NOT ROOT_unuran_FOUND)
-  set(unuran_veto  math/testrandom.C unuran/unuranDemo.C unuran/unuranFoamTest.C
+  set(unuran_veto  math/testrandom.C math/unuran/unuranDemo.C math/unuran/unuranFoamTest.C
                    math/multidimSampling.C)
 endif()
 
 if(NOT ROOT_xml_FOUND)
-  set(xml_veto  xml/*.C
+  set(xml_veto  io/xml/*.C
                 histfactory/*.C   # histfactory requires xml
                 histfactory/*.py
                 roostats/*.C      # most roostats tutorials require xml too,
@@ -169,7 +169,7 @@ if(NOT ROOT_xml_FOUND)
 endif()
 
 if(NOT ROOT_unfold_FOUND)
-  list(APPEND xml_veto unfold/*.C)
+  list(APPEND xml_veto analysis/unfold/*.C)
 endif()
 
 if(NOT ROOT_mpi_FOUND)
@@ -177,51 +177,51 @@ if(NOT ROOT_mpi_FOUND)
 endif()
 
 if(NOT xrootd)
-  set(xrootd_veto dataframe/df101_h1Analysis.C
-                  dataframe/df102_NanoAODDimuonAnalysis.C
-                  dataframe/df103_NanoAODHiggsAnalysis.C
-                  dataframe/df106_HiggsToFourLeptons.C
+  set(xrootd_veto analysis/dataframe/df101_h1Analysis.C
+                  analysis/dataframe/df102_NanoAODDimuonAnalysis.C
+                  analysis/dataframe/df103_NanoAODHiggsAnalysis.C
+                  analysis/dataframe/df106_HiggsToFourLeptons.C
                   tmva/tmva103_Application.C
-                  dataframe/df033_Describe.py
-                  dataframe/df102_NanoAODDimuonAnalysis.py
-                  dataframe/df103_NanoAODHiggsAnalysis.py
-                  dataframe/df104_HiggsToTwoPhotons.py
-                  dataframe/df105_WBosonAnalysis.py
-                  dataframe/df106_HiggsToFourLeptons.py
-                  dataframe/df107_SingleTopAnalysis.py
+                  analysis/dataframe/df033_Describe.py
+                  analysis/dataframe/df102_NanoAODDimuonAnalysis.py
+                  analysis/dataframe/df103_NanoAODHiggsAnalysis.py
+                  analysis/dataframe/df104_HiggsToTwoPhotons.py
+                  analysis/dataframe/df105_WBosonAnalysis.py
+                  analysis/dataframe/df106_HiggsToFourLeptons.py
+                  analysis/dataframe/df107_SingleTopAnalysis.py
                   roofit/rf618_mixture_models.py # depends on df106_HiggsToFourLeptons.py
-                  rcanvas/df104.py
-                  rcanvas/df105.py
+                  experimental/rcanvas/df104.py
+                  experimental/rcanvas/df105.py
                   )
 endif()
 
 # variables identifying the package must have the package name  in lower case (it corresponds to the CMake option name)
 if(NOT ROOT_r_FOUND)
-  set(r_veto  r/*.C)
+  set(r_veto  math/r/*.C)
 endif()
 
 set(histfactory_veto histfactory/makeExample.C)
 
 if(NOT ROOT_fitsio_FOUND)
-  set(fitsio_veto  fitsio/*.C)
+  set(fitsio_veto  io/fitsio/*.C)
 endif()
 
 if(NOT ROOT_mathmore_FOUND)
   set(mathmore_veto
       math/quasirandom.C
       math/exampleMultiRoot.C
-      math/Bessel.C
+      math/pdf/pdf009_Bessel.C
       math/LegendreAssoc.C
       math/Legendre.C
       math/mathmoreIntegration.C
-      math/multivarGaus.C
-      math/tStudent.C
-      math/normalDist.C
+      math/pdf/pdf007_multivarGaus.C
+      math/pdf/pdf012_tStudent.C
+      math/pdf/pdf001_Nornal.C
       roostats/TestNonCentral.C
       roostats/TestNonCentral.py
       math/Legendre.py
-      math/Bessel.py
-      math/tStudent.py)
+      math/pdf/pdf009_Bessel.py
+      math/pdf/pdf012_tStudent.py)
 endif()
 
 if(NOT ROOT_fftw3_FOUND)
@@ -233,13 +233,13 @@ if(NOT ROOT_fftw3_FOUND)
                  roofit/rf210_angularconv.py
                  roofit/rf211_paramconv.py
                  roofit/rf512_wsfactory_oper.py
-                 fft/FFT.C
-                 fit/fitConvolution.C
-                 fit/fitConvolution.py)
+                 math/fft/FFT.C
+                 math/fit/fitConvolution.C
+                 math/fit/fitConvolution.py)
 endif()
 
 if(NOT ROOT_opengl_FOUND)
-  set(opengl_veto tree/staff.C
+  set(opengl_veto io/tree/staff.C
                   gl/*.C)
 endif()
 
@@ -268,7 +268,7 @@ if(NOT gdml)
 endif()
 
 #---These ones requires a display to run-----------------------------
-set(gui_veto fit/fitpanel_playback.C
+set(gui_veto math/fit/fitpanel_playback.C
              cocoa/*.C
              geom/building.C geom/cheongwadae.C geom/geom*.C geom/lego.C geom/robot.C geom/south_gate.C geom/station*.C geom/tank.C geom/webdemo.C geom/web_cms.cxx
              gl/glViewerExercise.C gl/glViewerLOD.C gl/gviz3d.C gl/nucleus.C gl/viewer3DLocal.C gl/viewer3DMaster.C
@@ -287,7 +287,7 @@ set(gui_veto fit/fitpanel_playback.C
              webgui/panel/webpanel.cxx
              webgui/webwindow/webwindow.cxx)
 if (NOT webgui)
-  list(APPEND gui_veto graphics/save_batch.C rcanvas/df104.py rcanvas/df105.py)
+  list(APPEND gui_veto graphics/save_batch.C experimental/rcanvas/df104.py experimental/rcanvas/df105.py)
 endif()
 
 if (NOT ROOT_tmva_FOUND)
@@ -356,39 +356,39 @@ if (NOT ROOT_vecgeom_FOUND)
 endif()
 
 if(root7)
-  set(root7_veto dataframe/df013_InspectAnalysis.C
-                 v7/browser.cxx
-                 v7/filedialog.cxx
-                 v7/fitpanel.cxx
-                 v7/fitpanel6.cxx
+  set(root7_veto analysis/dataframe/df013_InspectAnalysis.C
+                 experimental/browser.cxx
+                 experimental/filedialog.cxx
+                 experimental/fitpanel.cxx
+                 experimental/fitpanel6.cxx
       )
   if(NOT davix)
-    list(APPEND root7_veto v7/ntuple/ntpl004_dimuon.C)
-    list(APPEND root7_veto v7/ntuple/ntpl011_global_temperatures.C)
+    list(APPEND root7_veto io/ntuple/ntpl004_dimuon.C)
+    list(APPEND root7_veto io/ntuple/ntpl011_global_temperatures.C)
   endif()
   if(NOT dataframe)
-    list(APPEND root7_veto v7/ntuple/ntpl011_global_temperatures.C)
-    list(APPEND root7_veto v7/ntuple/ntpl004_dimuon.C)
-    list(APPEND root7_veto v7/ntuple/ntpl008_import.C)
-    list(APPEND root7_veto rcanvas/df104.py)
-    list(APPEND root7_veto rcanvas/df105.py)
+    list(APPEND root7_veto io/ntuple/ntpl011_global_temperatures.C)
+    list(APPEND root7_veto io/ntuple/ntpl004_dimuon.C)
+    list(APPEND root7_veto io/ntuple/ntpl008_import.C)
+    list(APPEND root7_veto experimental/rcanvas/df104.py)
+    list(APPEND root7_veto experimental/rcanvas/df105.py)
   endif()
   if(MSVC AND NOT win_broken_tests)
     #---EOS is not supported on Windows
-    list(APPEND root7_veto rcanvas/df104.py)
-    list(APPEND root7_veto rcanvas/df105.py)
-    list(APPEND root7_veto rcanvas/rbox.py)
+    list(APPEND root7_veto experimental/rcanvas/df104.py)
+    list(APPEND root7_veto experimental/rcanvas/df105.py)
+    list(APPEND root7_veto experimental/rcanvas/rbox.py)
   endif()
 else()
   if(MSVC AND NOT win_broken_tests)
-    list(APPEND root7_veto dataframe/df013_InspectAnalysis.C)
+    list(APPEND root7_veto analysis/dataframe/df013_InspectAnalysis.C)
   endif()
-  file(GLOB v7_veto_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/ v7/*.py v7/*.cxx v7/*/*.cxx v7/*.C v7/*/*.C rcanvas/*.py rcanvas/*.cxx)
+  file(GLOB v7_veto_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/ experimental/*.py experimental/*.cxx experimental/*/*.cxx experimental/*.C experimental/*/*.C experimental/rcanvas/*.py experimental/rcanvas/*.cxx)
   list(APPEND root7_veto ${v7_veto_files})
 endif()
 
 if (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES arm64)
-   set(macm1_veto dataframe/df107_SingleTopAnalysis.py)
+   set(macm1_veto analysis/dataframe/df107_SingleTopAnalysis.py)
 endif()
 
 #---These ones are disabled !!! ------------------------------------
@@ -401,41 +401,41 @@ set(extra_veto
   legacy/rootmarks.C          # Instrumentation. Not a standalone tutorial
   multicore/mp_H1_lambdas.C # not a tutorial; used by mp104_processH1.C et al.
   html/*.C
-  net/*.C
+  legacy/net/*.C
   legacy/proof/*.C
-  sql/*.C
-  tree/hsimpleProxy.C # A driver uses this macro which cannot be executed directly
-  tree/tree103_tree.C
-  tree/tree106_tree.C
-  tree/tree108_tree.C
+  io/sql/*.C
+  io/tree/hsimpleProxy.C # A driver uses this macro which cannot be executed directly
+  io/tree/tree103_tree.C
+  io/tree/tree106_tree.C
+  io/tree/tree108_tree.C
   roostats/rs401d_FeldmanCousins.C  # Takes too much time
   histfactory/ModifyInterpolation.C
-  tree/tree110_copy.C
-  tree/tree111_copy.C
-  tree/tree112_copy.C
-  tree/h1analysis*.C # these are not a tutorial but classes used in run_h1analysis.C
-  tree/h1chain.C
+  io/tree/tree110_copy.C
+  io/tree/tree111_copy.C
+  io/tree/tree112_copy.C
+  io/tree/h1analysis*.C # these are not a tutorial but classes used in run_h1analysis.C
+  io/tree/h1chain.C
   http/*.C
   eve7/*.C
-  r/rootlogon.C)
+  math/r/rootlogon.C)
 
 if(MSVC AND NOT llvm13_broken_tests)
   list(APPEND extra_veto
        math/exampleFunction.py
-       dataframe/df002_dataModel.C
-       dataframe/df016_vecOps.C
-       dataframe/df017_vecOpsHEP.C
-       dataframe/df002_dataModel.py
-       dataframe/df016_vecOps.py
-       dataframe/df017_vecOpsHEP.py
-       dataframe/df032_RDFFromNumpy.py
-       dataframe/df035_RDFFromPandas.py)
+       analysis/dataframe/df002_dataModel.C
+       analysis/dataframe/df016_vecOps.C
+       analysis/dataframe/df017_vecOpsHEP.C
+       analysis/dataframe/df002_dataModel.py
+       analysis/dataframe/df016_vecOps.py
+       analysis/dataframe/df017_vecOpsHEP.py
+       analysis/dataframe/df032_RDFFromNumpy.py
+       analysis/dataframe/df035_RDFFromPandas.py)
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     list(APPEND extra_veto
-         dataframe/df007_snapshot.C
+         analysis/dataframe/df007_snapshot.C
          graphics/earth.C
          graphs/motorcycle.C
-         v7/ntuple/ntpl001_staff.C)
+         io/ntuple/ntpl001_staff.C)
   endif()
 endif()
 
@@ -478,10 +478,8 @@ if(webgui)
   list(APPEND tutorials ${tutorials_webcanv})
 endif()
 if(root7 AND webgui)
-  file(GLOB_RECURSE tutorials_v7 RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} v7/*.cxx)
-  list(APPEND tutorials ${tutorials_v7})
-  file(GLOB_RECURSE tutorials_rcanvas RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} rcanvas/*.cxx)
-  list(APPEND tutorials ${tutorials_rcanvas})
+  file(GLOB_RECURSE tutorials_exp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} experimental/*.cxx)
+  list(APPEND tutorials ${tutorials_exp})
 endif()
 file(GLOB tutorials_veto RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${all_veto})
 
@@ -500,7 +498,7 @@ if(mpi)
 endif()
 
 #---Special return code------------------------------------------------
-set(returncode_1 fit/fit2a.C
+set(returncode_1 math/fit/fit2a.C
                  graphics/earth.C
                  graphics/pavetext.C
                  graphics/tmathtext.C graphics/tmathtext2.C
@@ -513,34 +511,34 @@ set(returncode_1 fit/fit2a.C
                  hist/cumulative.C
                  hist/hlabels1.C
                  hist/hlabels2.C
-                 tree/h1analysis.C
+                 io/tree/h1analysis.C
                  math/chi2test.C
-                 r/SimpleFitting.C)
+                 math/r/SimpleFitting.C)
 #---Dependencies------------------------------------------------------
-set(unfold-testUnfold5d-depends tutorial-unfold-testUnfold5c)
-set(unfold-testUnfold5c-depends tutorial-unfold-testUnfold5b)
-set(unfold-testUnfold5b-depends tutorial-unfold-testUnfold5a)
-set(unfold-testUnfold7d-depends tutorial-unfold-testUnfold7c)
-set(unfold-testUnfold7c-depends tutorial-unfold-testUnfold7b)
-set(unfold-testUnfold7b-depends tutorial-unfold-testUnfold7a)
-set(xml-xmlmodifyfile-depends tutorial-xml-xmlnewfile)
-set(xml-xmlreadfile-depends tutorial-xml-xmlnewfile)
+set(analysis-unfold-testUnfold5d-depends tutorial-analysis-unfold-testUnfold5c)
+set(analysis-unfold-testUnfold5c-depends tutorial-analysis-unfold-testUnfold5b)
+set(analysis-unfold-testUnfold5b-depends tutorial-analysis-unfold-testUnfold5a)
+set(analysis-unfold-testUnfold7d-depends tutorial-analysis-unfold-testUnfold7c)
+set(analysis-unfold-testUnfold7c-depends tutorial-analysis-unfold-testUnfold7b)
+set(analysis-unfold-testUnfold7b-depends tutorial-analysis-unfold-testUnfold7a)
+set(io-xml-xmlmodifyfile-depends tutorial-io-xml-xmlnewfile)
+set(io-xml-xmlreadfile-depends tutorial-io-xml-xmlnewfile)
 set(roofit-rf503_wspaceread-depends tutorial-roofit-rf502_wspacewrite)
 set(io-readCode-depends tutorial-io-importCode)
-set(fit-fit1-depends tutorial-hist-fillrandom)
-set(fit-myfit-depends tutorial-fit-fitslicesy)
-set(foam-foam_demopers-depends tutorial-foam-foam_demo)
-set(tree-tree502_staff-depends  tutorial-tree-tree500_cernbuild)
-set(tree-tree501_cernstaff-depends  tutorial-tree-tree500_cernbuild)
-set(hist-hbars-depends  tutorial-tree-tree500_cernbuild)
+set(math-fit-fit1-depends tutorial-hist-fillrandom)
+set(math-fit-myfit-depends tutorial-math-fit-fitslicesy)
+set(math-foam-foam_demopers-depends tutorial-math-foam-foam_demo)
+set(io-tree-tree502_staff-depends  tutorial-io-tree-tree500_cernbuild)
+set(io-tree-tree501_cernstaff-depends  tutorial-io-tree-tree500_cernbuild)
+set(hist-hbars-depends  tutorial-io-tree-tree500_cernbuild)
 set(benchmarks-depends tutorial-hsimple
-                       tutorial-fit-fit1
-                       tutorial-fit-myfit
+                       tutorial-math-fit-fit1
+                       tutorial-math-fit-myfit
                        tutorial-hist-h1ReadAndDraw
                        tutorial-hist-FirstContour
                        tutorial-geom-na49view
-                       tutorial-tree-tree120_ntuple.C
-                       tutorial-tree-spider
+                       tutorial-io-tree-tree120_ntuple.C
+                       tutorial-io-tree-spider
                        tutorial-io-hadd
                        tutorial-io-loopdir
                        tutorial-io-copyFiles)
@@ -603,14 +601,14 @@ endif()
 
 #--List long-running tutorials to label them as "longtest"
 set (long_running
-     dataframe/df10[2-7]*
+     analysis/dataframe/df10[2-7]*
      multicore/mp103*)
 file(GLOB long_running RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${long_running})
 #--List multithreaded tutorials to run them serially
 set(NProcessors 4)
 set (multithreaded_all_cores
-     dataframe/df10[2-7]*
-     rcanvas/df10*
+     analysis/dataframe/df10[2-7]*
+     experimental/rcanvas/df10*
     )
 set (multithreaded
      ${multithreaded_all_cores}
@@ -746,9 +744,9 @@ if(ROOT_pyroot_FOUND)
              legacy/pyroot/*py      # legacy ...
              histfactory/makeQuickModel.py # not a tutorial
              eve/lineset.py         # requires GUI
-             sql/sqlcreatedb.py     # same as the C++ case
-             sql/sqlfilldb.py       # same as the C++ case
-             sql/sqlselect.py       # same as the C++ case
+             io/sql/sqlcreatedb.py     # same as the C++ case
+             io/sql/sqlfilldb.py       # same as the C++ case
+             io/sql/sqlselect.py       # same as the C++ case
              launcher.py            # Not a tutorial
              .enableImplicitMTWrapper.py # Not a tutorial
              )
@@ -760,17 +758,17 @@ if(ROOT_pyroot_FOUND)
   endif()
 
   if(dataframe AND DEFINED ENV{ROOTTEST_IGNORE_PANDAS_PY3})
-    list(APPEND pyveto dataframe/df026_AsNumpyArrays.py)
+    list(APPEND pyveto analysis/dataframe/df026_AsNumpyArrays.py)
   endif()
 
   # Rules specific to distributed RDataFrame
   # Disable distributed RDF tutorials if we didn't check dependencies in the environment first
   if(NOT test_distrdf_pyspark)
-    list(APPEND pyveto dataframe/distrdf001_spark_connection.py)
+    list(APPEND pyveto analysis/dataframe/distrdf001_spark_connection.py)
   endif()
   if(NOT test_distrdf_dask)
-    list(APPEND pyveto dataframe/distrdf002_dask_connection.py)
-    list(APPEND pyveto dataframe/distrdf003_live_visualization.py)
+    list(APPEND pyveto analysis/dataframe/distrdf002_dask_connection.py)
+    list(APPEND pyveto analysis/dataframe/distrdf003_live_visualization.py)
   endif()
   # Use main Python executable to run in PySpark driver and executors
   if(test_distrdf_pyspark)
@@ -788,11 +786,11 @@ if(ROOT_pyroot_FOUND)
     endif()
   endif()
   # These lists keep track of distrdf tutorials, so we can add specific properties later
-  file(GLOB distrdf_spark_tutorials RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} dataframe/*spark*)
-  file(GLOB distrdf_dask_tutorials RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} dataframe/*dask*)
+  file(GLOB distrdf_spark_tutorials RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} analysis/dataframe/*spark*)
+  file(GLOB distrdf_dask_tutorials RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} analysis/dataframe/*dask*)
 
   # Disable tutorial showing connection to the HTCondor service at CERN
-  list(APPEND pyveto dataframe/distrdf004_dask_lxbatch.py)
+  list(APPEND pyveto analysis/dataframe/distrdf004_dask_lxbatch.py)
 
   find_python_module(xgboost QUIET)
   if(NOT PY_XGBOOST_FOUND OR NOT dataframe)
@@ -847,7 +845,7 @@ if(ROOT_pyroot_FOUND)
   set(pyroot-fit1-depends tutorial-hist-fillrandom-py)
   set(pyroot-na49view-depends tutorial-pyroot-geometry-py)
   set(roofit-rf503_wspaceread-depends tutorial-roofit-rf502_wspacewrite-py)
-  set(roofit-rf618_mixture_models-depends tutorial-dataframe-df106_HiggsToFourLeptons-py)
+  set(roofit-rf618_mixture_models-depends tutorial-analysis-dataframe-df106_HiggsToFourLeptons-py)
 
   # Avoid a race condition: make sure Python tutorial is run after C++ tutorial
   set(roofit-rf104_classfactory-depends tutorial-roofit-rf104_classfactory)
@@ -861,14 +859,14 @@ if(ROOT_pyroot_FOUND)
   # To add a new requirement, add a glob expression that's named requires_<packageName>,
   # and add it to the list "fixtureLists" below.
   file(GLOB requires_numpy   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-      dataframe/df026_AsNumpyArrays.py
-      dataframe/df032_RDFFromNumpy.py
-      fit/combinedFit.py
-      fit/multifit.py
+      analysis/dataframe/df026_AsNumpyArrays.py
+      analysis/dataframe/df032_RDFFromNumpy.py
+      math/fit/combinedFit.py
+      math/fit/multifit.py
       roofit/rf409_NumPyPandasToRooFit.py)
   file(GLOB requires_numba   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} pyroot/pyroot004_NumbaDeclare.py)
   file(GLOB requires_pandas  RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-      dataframe/df026_AsNumpyArrays.py
+      analysis/dataframe/df026_AsNumpyArrays.py
       roofit/rf409_NumPyPandasToRooFit.py)
   file(GLOB requires_keras   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} tmva/keras/*.py)
   file(GLOB requires_torch   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} tmva/pytorch/*.py)
