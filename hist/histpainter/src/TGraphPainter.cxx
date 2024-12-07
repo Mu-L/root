@@ -4055,7 +4055,7 @@ void TGraphPainter::PaintGraphPolar(TGraph *theGraph, Option_t* options)
    ptitle->AddText(theGraph->GetTitle());
    ptitle->SetBit(kCanDelete);
    ptitle->Draw();
-   ptitle->Paint();
+   ptitle->Paint("blNDC");
 }
 
 
@@ -4890,7 +4890,7 @@ void TGraphPainter::PaintStats(TGraph *theGraph, TF1 *fit)
    }
 
    if (!done) functions->Add(stats);
-   stats->Paint();
+   stats->Paint(stats->GetOption());
 }
 
 

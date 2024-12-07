@@ -32,27 +32,31 @@ or
   root > .x $ROOTSYS/tutorials/benchmarks.C
 ```
 
+## Get started
+
+If you have never used ROOT before and don’t know where to start, we recommend that you first explore the [ROOT introductory course](https://github.com/root-project/student-course). You can also watch the recording of the course, but you should follow the material along on your PC. You also may want to have a look at the documentation of these modules:
+
+- @ref tutorial_hist
+- @ref tutorial_graphs
+- @ref tutorial_fit
+- @ref tutorial_tree
+- @ref tutorial_ntuple
+- @ref tutorial_dataframe
+- @ref tutorial_roofit
+
 The `$ROOTSYS/tutorials` directory includes several sub-directories:
 
 \defgroup tutorial_hist Histograms tutorials
 \ingroup Tutorials
 \brief Examples showing the "histograms' classes" usage.
 
-\defgroup tutorial_tree Tree tutorials
+\defgroup tutorial_analysis Data analysis tutorials
 \ingroup Tutorials
-\brief Example code which illustrates how to use ROOT trees and ntuples.
+\brief Various examples of data analysis workflows.
 
-\defgroup tutorial_dataframe Dataframe tutorials
+\defgroup tutorial_exp Experimental API tutorials
 \ingroup Tutorials
-\brief These examples show various features of [RDataFrame](classROOT_1_1RDataFrame.html): ROOT's declarative analysis interface.
-
-\defgroup tutorial_v7 ROOT 7 tutorials
-\ingroup Tutorials
-\brief Various examples showing the ROOT 7 interface.
-
-\defgroup tutorial_FOAM FOAM tutorials
-\ingroup Tutorials
-\brief Examples showing how to use FOAM.
+\brief Various examples showing the experimental API.
 
 \defgroup tutorial_eve Event display tutorials
 \ingroup Tutorials
@@ -69,14 +73,6 @@ The `$ROOTSYS/tutorials` directory includes several sub-directories:
 \defgroup tutorial_geom Geometry tutorials
 \ingroup Tutorials
 \brief Various ROOT geometry package examples.
-
-\defgroup tutorial_fft Fast Fourier Transforms tutorials
-\ingroup Tutorials
-\brief Example showing the Fast Fourier Transforms interface in ROOT.
-
-\defgroup tutorial_fit Fit Tutorials
-\ingroup Tutorials
-\brief These tutorials illustrate the main fitting features. Their names are related to the aspect which is treated in the code.
 
 \defgroup tutorial_roofit RooFit Tutorials
 \ingroup Tutorials
@@ -116,35 +112,19 @@ The `$ROOTSYS/tutorials` directory includes several sub-directories:
 
 \defgroup tutorial_io IO tutorials
 \ingroup Tutorials
-\brief These tutorials illustrate some of the capabilities of the ROOT IO subsystem.
+\brief These tutorials illustrate some of the capabilities of the ROOT IO subsystem, including TTree, RNTuple, SQL and XML.
 
 \defgroup tutorial_math Math tutorials
 \ingroup Tutorials
 \brief Examples showing the Math classes.
 
-\defgroup tutorial_matrix Matrix tutorials
-\ingroup Tutorials
-\brief Examples showing how to use TMatrix.
-
 \defgroup tutorial_multicore Multicore tutorials
 \ingroup Tutorials
 \brief These examples aim to illustrate the multicore features of ROOT, such as thread awareness and safety, multithreading and multiprocessing.
 
-\defgroup tutorial_net Net tutorials
-\ingroup Tutorials
-\brief Examples showing the net classes.
-
 \defgroup tutorial_pyroot PyRoot tutorials
 \ingroup Tutorials
 \brief Selected examples illustrating how to use ROOT's Python interface: PyROOT.
-
-\defgroup tutorial_quadp Quadratic programming package.
-\ingroup Tutorials
-\brief Example showing the usage of the quadratic programming package quadp.
-
-\defgroup tutorial_r R tutorials
-\ingroup Tutorials
-\brief Examples showing the R interface.
 
 \defgroup tutorial_roostats RooStats Tutorials
 \ingroup Tutorials
@@ -158,33 +138,9 @@ The `$ROOTSYS/tutorials` directory includes several sub-directories:
 \ingroup Tutorials
 \brief This tutorial illustrates the use of class TSPlot.
 
-\defgroup tutorial_sql SQL tutorials
+\defgroup tutorial_ml Machine Learning tutorials
 \ingroup Tutorials
-\brief Examples showing the SQL classes.
-
-\defgroup tutorial_tmva TMVA tutorials
-\ingroup Tutorials
-\brief Example code which illustrates how to use the TMVA toolkit
-
-\defgroup tutorial_unfold TUnfold tutorials
-\ingroup Tutorials
-\brief Test programs for the classes TUnfold and related
-
-\defgroup tutorial_unuran Unuran tutorials
-\ingroup Tutorials
-\brief Examples showing unuran capabilities.
-
-\defgroup tutorial_vecops VecOps tutorials
-\ingroup Tutorials
-\brief These examples show the functionalities of the VecOps utilities.
-
-\defgroup tutorial_FITS FITS files interface tutorials
-\ingroup Tutorials
-\brief Examples showing the FITS file interface.
-
-\defgroup tutorial_xml XML tutorials
-\ingroup Tutorials
-\brief XML examples.
+\brief Examples showing how to use Machine Learning from ROOT. 
 
 \defgroup tutorial_webcanv TWebCanvas tutorials
 \ingroup Tutorials
