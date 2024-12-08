@@ -699,6 +699,7 @@ h.Draw()
 
 The main goal of this package is to support running any RDataFrame application distributedly. Nonetheless, not all
 parts of the RDataFrame API currently work with this package. The subset that is currently available is:
+- Alias
 - AsNumpy
 - Count
 - Define
@@ -1202,8 +1203,9 @@ auto h = d1.Filter([](int b1, int b2) { return b1 > b2; }) // will act on "b1" a
 
 // just one default column this time
 RDataFrame d2("myTree", "file.root", {"b1"});
-auto min = d2.Filter([](double b2) { return b2 > 0; }, {"b2"}) // we can still specify non-default column lists
-             .Min(); // returns the minimum value of "b1" for the filtered entries
+auto d2f = d2.Filter([](double b2) { return b2 > 0; }, {"b2"}) // we can still specify non-default column lists
+auto min = d2f.Min(); // returns the minimum value of "b1" for the filtered entries
+auto vals = d2f.Take<double>(); // return the values for all entries passing the selection as a vector
 ~~~
 
 \anchor helper-cols
