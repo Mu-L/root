@@ -529,6 +529,8 @@ void TWebCanvas::CreateObjectSnapshot(TPadWebSnapshot &master, TPad *pad, TObjec
    TVirtualPS *saveps = gVirtualPS;
 
    TWebPS ps;
+   ps.GetPainting()->SetClassName(obj->ClassName());
+   ps.GetPainting()->SetObjectName(obj->GetName());
    gVirtualPS = masterps ? masterps : &ps;
    if (painter)
       painter->SetPainting(ps.GetPainting());
@@ -777,7 +779,7 @@ void TWebCanvas::CreatePadSnapshot(TPadWebSnapshot &paddata, TPad *pad, Long64_t
 
       frame = pad->GetFrame();
       if(frame)
-         primitives->AddFirst(frame);
+         primitives->AddFirst(frame, "");
    }
 
    if (!need_title.empty() && gStyle->GetOptTitle()) {
@@ -796,7 +798,7 @@ void TWebCanvas::CreatePadSnapshot(TPadWebSnapshot &paddata, TPad *pad, Long64_t
             title->SetTextSize(gStyle->GetTitleFontSize());
          title->AddText(need_title.c_str());
          title->SetBit(kCanDelete);
-         primitives->Add(title);
+         primitives->Add(title, title->GetOption());
       }
    }
 

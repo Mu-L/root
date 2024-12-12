@@ -3150,7 +3150,7 @@ void hlprint()
 
 \image html hlsimple.gif "Highlight mode and simple user function"
 
-For more complex demo please see for example `$ROOTSYS/tutorials/tree/temperature.C` file.
+For more complex demo please see for example `$ROOTSYS/tutorials/io/tree/tree200_temperature.C` file.
 
 */
 
@@ -8819,7 +8819,7 @@ void THistPainter::PaintStat(Int_t dostat, TF1 *fit)
    }
 
    if (!done) fFunctions->Add(stats);
-   stats->Paint();
+   stats->Paint(stats->GetOption());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9032,7 +9032,7 @@ void THistPainter::PaintStat2(Int_t dostat, TF1 *fit)
    }
 
    if (!done) fFunctions->Add(stats);
-   stats->Paint();
+   stats->Paint(stats->GetOption());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9246,7 +9246,7 @@ void THistPainter::PaintStat3(Int_t dostat, TF1 *fit)
    }
 
    if (!done) fFunctions->Add(stats);
-   stats->Paint();
+   stats->Paint(stats->GetOption());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -10300,7 +10300,7 @@ void THistPainter::PaintTitle()
    ptitle->AddText(fH->GetTitle());
    ptitle->SetBit(kCanDelete);
    ptitle->Draw();
-   ptitle->Paint();
+   ptitle->Paint("blNDC");
 
    if(!gPad->IsEditable()) delete ptitle;
 }

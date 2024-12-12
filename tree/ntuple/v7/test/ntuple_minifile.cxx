@@ -1,6 +1,7 @@
 #include "ntuple_test.hxx"
 #include <TKey.h>
 #include <TTree.h>
+#include <TUUID.h>
 #include <TVector2.h>
 #include <TVector3.h>
 #include <TVirtualStreamerInfo.h>
@@ -121,6 +122,60 @@ TEST(MiniFile, Proper)
    EXPECT_EQ(footer, buf);
 }
 
+TEST(MiniFile, Directory)
+{
+   FileRaii fileGuard("test_ntuple_minifile_directory.root");
+
+   std::unique_ptr<TFile> file(TFile::Open(fileGuard.GetPath().c_str(), "RECREATE"));
+   auto directory = file->mkdir("foo");
+
+   auto writer = RNTupleFileWriter::Append("MyNTuple", *directory, RNTupleWriteOptions::kDefaultMaxKeySize);
+
+   char header = 'h';
+   char footer = 'f';
+   char blob = 'b';
+   auto offHeader = writer->WriteNTupleHeader(&header, 1, 1);
+   auto offBlob = writer->WriteBlob(&blob, 1, 1);
+   auto offFooter = writer->WriteNTupleFooter(&footer, 1, 1);
+   writer->Commit();
+
+   auto rawFile = RRawFile::Create(fileGuard.GetPath());
+   RMiniFileReader reader(rawFile.get());
+   EXPECT_FALSE(reader.GetNTuple("MyNTuple"));
+   EXPECT_FALSE(reader.GetNTuple("bar/MyNTuple"));
+   EXPECT_FALSE(reader.GetNTuple("foo/bar/MyNTuple"));
+   auto ntuple = reader.GetNTuple("foo/MyNTuple").Unwrap();
+   EXPECT_EQ(offHeader, ntuple.GetSeekHeader());
+   EXPECT_EQ(offFooter, ntuple.GetSeekFooter());
+
+   char buf;
+   reader.ReadBuffer(&buf, 1, offBlob);
+   EXPECT_EQ(blob, buf);
+   reader.ReadBuffer(&buf, 1, offHeader);
+   EXPECT_EQ(header, buf);
+   reader.ReadBuffer(&buf, 1, offFooter);
+   EXPECT_EQ(footer, buf);
+
+   file = std::unique_ptr<TFile>(TFile::Open(fileGuard.GetPath().c_str(), "UPDATE"));
+   file->mkdir("foo/bar");
+   directory = file->GetDirectory("foo/bar");
+   writer = RNTupleFileWriter::Append("MyNTuple2", *directory, RNTupleWriteOptions::kDefaultMaxKeySize);
+   offHeader = writer->WriteNTupleHeader(&header, 1, 1);
+   offFooter = writer->WriteNTupleFooter(&footer, 1, 1);
+   writer->Commit();
+
+   rawFile = RRawFile::Create(fileGuard.GetPath());
+   RMiniFileReader reader2(rawFile.get());
+   EXPECT_FALSE(reader2.GetNTuple("foo/bar"));
+   ntuple = reader2.GetNTuple("foo/bar/MyNTuple2").Unwrap();
+   EXPECT_EQ(offHeader, ntuple.GetSeekHeader());
+   EXPECT_EQ(offFooter, ntuple.GetSeekFooter());
+
+   ntuple = reader2.GetNTuple("/foo/bar/MyNTuple2").Unwrap();
+   EXPECT_EQ(offHeader, ntuple.GetSeekHeader());
+   EXPECT_EQ(offFooter, ntuple.GetSeekFooter());
+}
+
 TEST(MiniFile, SimpleKeys)
 {
    FileRaii fileGuard("test_ntuple_minifile_simple_keys.root");
@@ -183,47 +238,59 @@ TEST(MiniFile, SimpleKeys)
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "TFile");
+   EXPECT_EQ(key->GetSeekKey(), 100);
+   EXPECT_EQ(key->GetSeekPdir(), 0);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob1);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob1], blob1);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob2);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob2], blob2);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob3);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob3], blob3);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob4);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob4Write], blob4);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob5);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob6);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob6], blob6);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "ROOT::RNTuple");
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    ASSERT_TRUE(readNextKey());
    // KeysList
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetName(), "StreamerInfo");
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    ASSERT_TRUE(readNextKey());
    // FreeSegments
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    EXPECT_EQ(offset, size);
 }
@@ -288,47 +355,58 @@ TEST(MiniFile, ProperKeys)
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "TFile");
+   EXPECT_EQ(key->GetSeekPdir(), 0);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob1);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob1], blob1);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob2);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob2], blob2);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob3);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob3], blob3);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob4);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob4Write], blob4);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob5);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "RBlob");
    EXPECT_EQ(key->GetSeekKey() + key->GetKeylen(), offBlob6);
+   EXPECT_EQ(key->GetSeekPdir(), 100);
    EXPECT_EQ(buffer[offBlob6], blob6);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetClassName(), "ROOT::RNTuple");
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    ASSERT_TRUE(readNextKey());
    // KeysList
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    ASSERT_TRUE(readNextKey());
    EXPECT_STREQ(key->GetName(), "StreamerInfo");
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    ASSERT_TRUE(readNextKey());
    // FreeSegments
+   EXPECT_EQ(key->GetSeekPdir(), 100);
 
    EXPECT_EQ(offset, size);
 }
@@ -703,4 +781,22 @@ TEST(MiniFile, StreamerInfo)
       EXPECT_STREQ("TVector2", vecInfos[1]->GetName());
       EXPECT_STREQ("TVector3", vecInfos[2]->GetName());
    }
+}
+
+TEST(MiniFile, UUID)
+{
+   FileRaii fileGuard("test_ntuple_minifile_uuid.root");
+
+   RNTupleWriteOptions options;
+   auto writer = RNTupleFileWriter::Recreate("ntpl", fileGuard.GetPath(), EContainerFormat::kTFile, options);
+   char header = 'h';
+   char footer = 'f';
+   writer->WriteNTupleHeader(&header, 1, 1);
+   writer->WriteNTupleFooter(&footer, 1, 1);
+   writer->Commit();
+
+   auto f = std::unique_ptr<TFile>(TFile::Open(fileGuard.GetPath().c_str()));
+   TUUID uuid;
+   uuid.SetUUID("00000000-0000-0000-0000-000000000000");
+   EXPECT_NE(uuid, f->GetUUID());
 }
