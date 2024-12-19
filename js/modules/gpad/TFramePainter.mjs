@@ -392,11 +392,13 @@ const TooltipHandler = {
          }
       }
 
-      let nhints = 0, nexact = 0, maxlen = 0, lastcolor1 = 0, usecolor1 = false, textheight = 11;
+      let nhints = 0, nexact = 0, maxlen = 0, lastcolor1 = 0, usecolor1 = false;
       const hmargin = 3, wmargin = 3, hstep = 1.2,
             frame_rect = this.getFrameRect(),
             pp = this.getPadPainter(),
             pad_width = pp?.getPadWidth(),
+            scale = this.getCanvPainter()?.getPadScale() ?? 1,
+            textheight = (pnt?.touch ? 15 : 11) * scale,
             font = new FontHandler(160, textheight),
             disable_tootlips = !this.isTooltipAllowed() || !this.tooltip_enabled;
 
@@ -408,10 +410,8 @@ const TooltipHandler = {
       // collect tooltips from pad painter - it has list of all drawn objects
       const hints = pp?.processPadTooltipEvent(pnt) ?? [];
 
-      if (pp?._deliver_webcanvas_events && pp?.is_active_pad && pnt && isFunc(pp?.deliverWebCanvasEvent))
-         pp.deliverWebCanvasEvent('move', frame_rect.x + pnt.x, frame_rect.y + pnt.y, hints);
-
-      if (pnt?.touch) textheight = 15;
+      if (pnt && frame_rect)
+         pp.deliverWebCanvasEvent('move', frame_rect.x + pnt.x, frame_rect.y + pnt.y, hints ? hints[0]?.painter?.snapid : '');
 
       for (let n = 0; n < hints.length; ++n) {
          const hint = hints[n];
@@ -445,7 +445,8 @@ const TooltipHandler = {
          hint.height = Math.round(hint.lines.length * textheight * hstep + 2 * hmargin - textheight * (hstep - 1));
 
          if ((hint.color1 !== undefined) && (hint.color1 !== 'none')) {
-            if ((lastcolor1 !== 0) && (lastcolor1 !== hint.color1)) usecolor1 = true;
+            if ((lastcolor1 !== 0) && (lastcolor1 !== hint.color1))
+               usecolor1 = true;
             lastcolor1 = hint.color1;
          }
       }
@@ -476,21 +477,27 @@ const TooltipHandler = {
          if (!hint) hint = hints[k];
 
          // select exact hint if this is the only one
-         if (hints[k].exact && (nexact < 2) && (!hint || !hint.exact)) { hint = hints[k]; break; }
+         if (hints[k].exact && (nexact < 2) && (!hint || !hint.exact)) {
+            hint = hints[k];
+            break;
+         }
 
-         if (!pnt || (hints[k].x === undefined) || (hints[k].y === undefined)) continue;
+         if (!pnt || (hints[k].x === undefined) || (hints[k].y === undefined))
+            continue;
 
          const dist2 = (pnt.x - hints[k].x) ** 2 + (pnt.y - hints[k].y) ** 2;
          if (dist2 < best_dist2) { best_dist2 = dist2; best_hint = hints[k]; }
       }
 
-      if ((!hint || !hint.exact) && (best_dist2 < 400)) hint = best_hint;
+      if ((!hint || !hint.exact) && (best_dist2 < 400))
+         hint = best_hint;
 
       if (hint) {
          name = (hint.lines && hint.lines.length > 1) ? hint.lines[0] : hint.name;
          title = hint.title || '';
          info = hint.line;
-         if (!info && hint.lines) info = hint.lines.slice(1).join(' ');
+         if (!info && hint.lines)
+            info = hint.lines.slice(1).join(' ');
       }
 
       this.showObjectStatus(name, title, info, coordinates);
@@ -522,7 +529,7 @@ const TooltipHandler = {
             .property('hints_pad', this.getPadName());
 
       let viewmode = hintsg.property('viewmode') || '',
-         actualw = 0, posx = pnt.x + frame_rect.hint_delta_x;
+          actualw = 0, posx = pnt.x + frame_rect.hint_delta_x;
 
       if (show_only_best || (nhints === 1)) {
          viewmode = 'single';
@@ -592,7 +599,8 @@ const TooltipHandler = {
                   n = -1;
                }
             }
-            if ((gapminx === -1111) && (gapmaxx === -1111)) gapminx = gapmaxx = hint.x;
+            if ((gapminx === -1111) && (gapmaxx === -1111))
+               gapminx = gapmaxx = hint.x;
             gapminx = Math.min(gapminx, hint.x);
             gapmaxx = Math.min(gapmaxx, hint.x);
          }
@@ -1641,6 +1649,8 @@ class TFramePainter extends ObjectPainter {
       this.axes_drawn = false;
       this.axes2_drawn = false;
       this.keys_handler = null;
+      this._borderMode = gStyle.fFrameBorderMode;
+      this._borderSize = gStyle.fFrameBorderSize;
       this.projection = 0; // different projections
    }
 
@@ -2219,6 +2229,8 @@ class TFramePainter extends ObjectPainter {
       let pr = Promise.resolve(true);
 
       if (!disable_x_draw || !disable_y_draw || draw_grids) {
+         draw_vertical.optionLeft = draw_vertical.invert_side; // text align
+
          const can_adjust_frame = !shrink_forbidden && settings.CanAdjustFrame,
 
          pr1 = draw_horiz.drawAxis(layer, w, h,
@@ -2296,6 +2308,7 @@ class TFramePainter extends ObjectPainter {
       }
 
       if (draw_vertical) {
+         draw_vertical.optionLeft = draw_vertical.invert_side;
          pr2 = draw_vertical.drawAxis(layer, w, h,
                                       draw_vertical.invert_side ? `translate(${w})` : null,
                                       pad?.fTicky ? w : 0, false,
@@ -2330,15 +2343,17 @@ class TFramePainter extends ObjectPainter {
          }
       }
 
-      if (tframe)
+      if (tframe) {
          this.createAttFill({ attr: tframe });
-      else if (this.fillatt === undefined) {
+         this._borderMode = tframe.fBorderMode;
+         this._borderSize = tframe.fBorderSize;
+      } else if (this.fillatt === undefined) {
          if (pad?.fFrameFillColor)
             this.createAttFill({ pattern: pad.fFrameFillStyle, color: pad.fFrameFillColor });
          else if (pad)
             this.createAttFill({ attr: pad });
          else
-            this.createAttFill({ pattern: 1001, color: 0 });
+            this.createAttFill({ pattern: gStyle.fFrameFillStyle, color: gStyle.fFrameFillColor });
 
          // force white color for the canvas frame
          if (!tframe && this.fillatt.empty() && pp?.iscan)
@@ -2349,8 +2364,10 @@ class TFramePainter extends ObjectPainter {
 
       if (!tframe && (pad?.fFrameLineColor !== undefined))
          this.createAttLine({ color: pad.fFrameLineColor, width: pad.fFrameLineWidth, style: pad.fFrameLineStyle });
-      else
+      else if (tframe)
          this.createAttLine({ attr: tframe, color: 'black' });
+      else
+         this.createAttLine({ color: gStyle.fFrameLineColor, width: gStyle.fFrameLineWidth, style: gStyle.fFrameLineStyle });
    }
 
    /** @summary Function called at the end of resize of frame
@@ -2545,9 +2562,8 @@ class TFramePainter extends ObjectPainter {
               .attr('viewBox', `0 0 ${this._frame_width} ${this._frame_height}`);
 
       this.draw_g.selectAll('.frame_deco').remove();
-      const frame = this.getObject();
-      if (frame?.fBorderMode && this.fillatt.hasColor()) {
-         const paths = getBoxDecorations(0, 0, this._frame_width, this._frame_height, frame.fBorderMode, frame.fBorderSize || 2, frame.fBorderSize || 2);
+      if (this._borderMode && this.fillatt.hasColor()) {
+         const paths = getBoxDecorations(0, 0, this._frame_width, this._frame_height, this._borderMode, this._borderSize || 2, this._borderSize || 2);
          this.draw_g.insert('svg:path', '.main_layer')
                     .attr('class', 'frame_deco')
                     .attr('d', paths[0])
@@ -2719,6 +2735,18 @@ class TFramePainter extends ObjectPainter {
 
       menu.addchk(this.isTooltipAllowed(), 'Show tooltips', () => this.setTooltipAllowed('toggle'));
       menu.addAttributesMenu(this, alone ? '' : 'Frame ');
+
+      menu.sub('Border');
+      menu.addSelectMenu('Mode', ['Down', 'Off', 'Up'], this._borderMode + 1, v => {
+         this._borderMode = v - 1;
+         this.interactiveRedraw(true, `exec:SetBorderMode(${v-1})`);
+      }, 'Frame border mode');
+      menu.addSizeMenu('Size', 0, 20, 2, this._borderSize, v => {
+         this._borderSize = v;
+         this.interactiveRedraw(true, `exec:SetBorderSize(${v})`);
+      }, 'Frame border size');
+      menu.endsub();
+
       menu.add('Save to gStyle', () => {
          gStyle.fPadBottomMargin = this.fY1NDC;
          gStyle.fPadTopMargin = 1 - this.fY2NDC;
@@ -2726,6 +2754,8 @@ class TFramePainter extends ObjectPainter {
          gStyle.fPadRightMargin = 1 - this.fX2NDC;
          this.fillatt?.saveToStyle('fFrameFillColor', 'fFrameFillStyle');
          this.lineatt?.saveToStyle('fFrameLineColor', 'fFrameLineWidth', 'fFrameLineStyle');
+         gStyle.fFrameBorderMode = this._borderMode;
+         gStyle.fFrameBorderSize = this._borderSize;
       }, 'Store frame position and graphical attributes to gStyle');
 
       menu.separator();

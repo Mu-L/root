@@ -17,6 +17,7 @@
 #define ROOT7_RFieldBase
 
 #include <ROOT/RColumn.hxx>
+#include <ROOT/RNTupleRange.hxx>
 #include <ROOT/RNTupleUtil.hxx>
 
 #include <cstddef>
@@ -31,6 +32,7 @@
 namespace ROOT {
 namespace Experimental {
 
+class RClassField;
 class RFieldBase;
 class RNTupleJoinProcessor;
 
@@ -66,6 +68,7 @@ This is and can only be partially enforced through C++.
 */
 // clang-format on
 class RFieldBase {
+   friend class ROOT::Experimental::RClassField;                             // to mark members as artificial
    friend class ROOT::Experimental::RNTupleJoinProcessor;                    // needs ConstuctValue
    friend struct ROOT::Experimental::Internal::RFieldCallbackInjector;       // used for unit tests
    friend struct ROOT::Experimental::Internal::RFieldRepresentationModifier; // used for unit tests
@@ -173,8 +176,13 @@ private:
    ENTupleStructure fStructure;
    /// For fixed sized arrays, the array length
    std::size_t fNRepetitions;
-   /// A field qualifies as simple if it is both mappable and has no post-read callback
+   /// A field qualifies as simple if it is mappable (which implies it has a single principal column),
+   /// and it is not an artificial field and has no post-read callback
    bool fIsSimple;
+   /// A field that is not backed on disk but computed, e.g. a default-constructed missing field or
+   /// a field whose data is created by I/O customization rules. Subfields of artificial fields are
+   /// artificial, too.
+   bool fIsArtificial = false;
    /// When the columns are connected to a page source or page sink, the field represents a field id in the
    /// corresponding RNTuple descriptor. This on-disk ID is set in RPageSink::Create() for writing and by
    /// RFieldDescriptor::CreateField() when recreating a field / model from the stored descriptor.
@@ -214,6 +222,15 @@ private:
    /// determined using the page source descriptor, based on the parent field ID and the sub field name.
    void ConnectPageSource(Internal::RPageSource &pageSource);
 
+   void SetArtificial()
+   {
+      fIsSimple = false;
+      fIsArtificial = true;
+      for (auto &field : fSubFields) {
+         field->SetArtificial();
+      }
+   }
+
 protected:
    /// Input parameter to ReadBulk() and ReadBulkImpl(). See RBulk class for more information
    struct RBulkSpec;
@@ -248,7 +265,7 @@ protected:
    std::uint32_t fOnDiskTypeChecksum = 0;
    /// Pointers into the static vector GetColumnRepresentations().GetSerializationTypes() when
    /// SetColumnRepresentatives is called.  Otherwise (if empty) GetColumnRepresentatives() returns a vector
-   /// with a single element, the default representation.
+   /// with a single element, the default representation.  Always empty for artificial fields.
    std::vector<std::reference_wrapper<const ColumnRepresentation_t>> fColumnRepresentatives;
 
    /// Factory method for the field's type. The caller owns the returned pointer
@@ -366,10 +383,12 @@ protected:
       if (fIsSimple)
          return (void)fPrincipalColumn->Read(globalIndex, to);
 
-      if (fTraits & kTraitMappable)
-         fPrincipalColumn->Read(globalIndex, to);
-      else
-         ReadGlobalImpl(globalIndex, to);
+      if (!fIsArtificial) {
+         if (fTraits & kTraitMappable)
+            fPrincipalColumn->Read(globalIndex, to);
+         else
+            ReadGlobalImpl(globalIndex, to);
+      }
       if (R__unlikely(!fReadCallbacks.empty()))
          InvokeReadCallbacks(to);
    }
@@ -382,10 +401,12 @@ protected:
       if (fIsSimple)
          return (void)fPrincipalColumn->Read(clusterIndex, to);
 
-      if (fTraits & kTraitMappable)
-         fPrincipalColumn->Read(clusterIndex, to);
-      else
-         ReadInClusterImpl(clusterIndex, to);
+      if (!fIsArtificial) {
+         if (fTraits & kTraitMappable)
+            fPrincipalColumn->Read(clusterIndex, to);
+         else
+            ReadInClusterImpl(clusterIndex, to);
+      }
       if (R__unlikely(!fReadCallbacks.empty()))
          InvokeReadCallbacks(to);
    }
@@ -428,6 +449,9 @@ protected:
 
    /// Add a new subfield to the list of nested fields
    void Attach(std::unique_ptr<RFieldBase> child);
+
+   /// Called by `ConnectPageSource()` before connecting; derived classes may override this as appropriate
+   virtual void BeforeConnectPageSource(Internal::RPageSource &) {}
 
    /// Called by `ConnectPageSource()` once connected; derived classes may override this as appropriate
    virtual void OnConnectPageSource() {}
@@ -519,6 +543,7 @@ public:
    std::vector<RFieldBase *> GetSubFields();
    std::vector<const RFieldBase *> GetSubFields() const;
    bool IsSimple() const { return fIsSimple; }
+   bool IsArtificial() const { return fIsArtificial; }
    /// Get the field's description
    const std::string &GetDescription() const { return fDescription; }
    void SetDescription(std::string_view description);
@@ -527,7 +552,8 @@ public:
    DescriptorId_t GetOnDiskId() const { return fOnDiskId; }
    void SetOnDiskId(DescriptorId_t id);
 
-   /// Returns the fColumnRepresentative pointee or, if unset, the field's default representative
+   /// Returns the fColumnRepresentative pointee or, if unset (always the case for artificial fields), the field's
+   /// default representative
    RColumnRepresentations::Selection_t GetColumnRepresentatives() const;
    /// Fixes a column representative. This can only be done _before_ connecting the field to a page sink.
    /// Otherwise, or if the provided representation is not in the list of GetColumnRepresentations,
@@ -740,7 +766,7 @@ public:
    /// Reads 'size' values from the associated field, starting from 'firstIndex'. Note that the index is given
    /// relative to a certain cluster. The return value points to the array of read objects.
    /// The 'maskReq' parameter is a bool array of at least 'size' elements. Only objects for which the mask is
-   /// true are guaranteed to be read in the returned value array.
+   /// true are guaranteed to be read in the returned value array. A 'nullptr' means to read all elements.
    void *ReadBulk(RClusterIndex firstIndex, const bool *maskReq, std::size_t size)
    {
       if (!ContainsRange(firstIndex, size))
@@ -771,6 +797,9 @@ public:
       }
       return GetValuePtrAt(offset);
    }
+
+   /// Overload to read all elements in the given cluster range.
+   void *ReadBulk(RNTupleClusterRange range) { return ReadBulk(*range.begin(), nullptr, range.size()); }
 };
 
 namespace Internal {

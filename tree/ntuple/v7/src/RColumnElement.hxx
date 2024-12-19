@@ -16,6 +16,7 @@
 #include <cassert>
 #include <limits>
 #include <type_traits>
+#include <cmath>
 
 // NOTE: some tests might define R__LITTLE_ENDIAN to simulate a different-endianness machine
 #ifndef R__LITTLE_ENDIAN
@@ -133,7 +134,7 @@ inline void ByteSwapIfNecessary<unsigned char>(unsigned char &)
 template <typename DestT, typename SourceT>
 inline void EnsureValidRange(SourceT val [[maybe_unused]])
 {
-   using ROOT::Experimental::RException;
+   using ROOT::RException;
 
    if constexpr (!std::is_integral_v<DestT> || !std::is_integral_v<SourceT>)
       return;
@@ -593,9 +594,8 @@ class RColumnElement : public RColumnElementBase {
 public:
    RColumnElement() : RColumnElementBase(sizeof(CppT))
    {
-      throw ROOT::Experimental::RException(
-         R__FAIL(std::string("internal error: no column mapping for this C++ type: ") + typeid(CppT).name() + " --> " +
-                 GetColumnTypeName(ColumnT)));
+      throw ROOT::RException(R__FAIL(std::string("internal error: no column mapping for this C++ type: ") +
+                                     typeid(CppT).name() + " --> " + GetColumnTypeName(ColumnT)));
    }
 
    RIdentifier GetIdentifier() const final { return RIdentifier{typeid(CppT), EColumnType::kUnknown}; }
@@ -980,12 +980,13 @@ using Quantized_t = std::uint32_t;
 [[maybe_unused]] inline std::size_t LeadingZeroes(std::uint32_t x)
 {
    if (x == 0)
-      return 64;
+      return 32;
 
 #ifdef _MSC_VER
    unsigned long idx = 0;
-   _BitScanForward(&idx, x);
-   return static_cast<std::size_t>(idx);
+   if (_BitScanReverse(&idx, x))
+      return static_cast<std::size_t>(31 - idx);
+   return 32;
 #else
    return static_cast<std::size_t>(__builtin_clzl(x));
 #endif
@@ -994,12 +995,13 @@ using Quantized_t = std::uint32_t;
 [[maybe_unused]] inline std::size_t TrailingZeroes(std::uint32_t x)
 {
    if (x == 0)
-      return 64;
+      return 32;
 
 #ifdef _MSC_VER
    unsigned long idx = 0;
-   _BitScanReverse(&idx, x);
-   return static_cast<std::size_t>(idx);
+   if (_BitScanForward(&idx, x))
+      return static_cast<std::size_t>(idx);
+   return 32;
 #else
    return static_cast<std::size_t>(__builtin_ctzl(x));
 #endif
@@ -1057,8 +1059,8 @@ int UnquantizeReals(T *dst, const Quantized_t *src, std::size_t count, double mi
    const double scale = (max - min) / quantMax;
    const std::size_t unusedBits = sizeof(Quantized_t) * 8 - nQuantBits;
    const double eps = std::numeric_limits<double>::epsilon();
-   const double emin = -eps * scale + min;
-   const double emax = (static_cast<double>(quantMax) + eps) * scale + min;
+   const double emin = min - std::abs(min) * eps;
+   const double emax = max + std::abs(max) * eps;
 
    int nOutOfRange = 0;
 
@@ -1101,6 +1103,9 @@ public:
    {
       R__ASSERT(min >= std::numeric_limits<T>::lowest());
       R__ASSERT(max <= std::numeric_limits<T>::max());
+      // Disallow denormal, NaN and infinity
+      R__ASSERT(std::isnormal(min) || min == 0.0);
+      R__ASSERT(std::isnormal(max) || max == 0.0);
       fValueRange = {min, max};
    }
 
@@ -1117,9 +1122,9 @@ public:
       const int nOutOfRange =
          Quantize::QuantizeReals(quantized.get(), reinterpret_cast<const T *>(src), count, min, max, fBitsOnStorage);
       if (nOutOfRange) {
-         throw RException(R__FAIL(std::to_string(nOutOfRange) +
-                                  " values were found of of range for quantization while packing (range is [" +
-                                  std::to_string(min) + ", " + std::to_string(max) + "])"));
+         throw ROOT::RException(R__FAIL(std::to_string(nOutOfRange) +
+                                        " values were found of of range for quantization while packing (range is [" +
+                                        std::to_string(min) + ", " + std::to_string(max) + "])"));
       }
       Internal::BitPacking::PackBits(dst, quantized.get(), count, sizeof(Quantize::Quantized_t), fBitsOnStorage);
    }

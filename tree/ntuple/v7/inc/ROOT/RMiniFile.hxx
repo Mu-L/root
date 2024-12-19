@@ -27,8 +27,7 @@
 #include <memory>
 #include <string>
 
-class TCollection;
-class TFile;
+class TDirectory;
 class TFileMergeInfo;
 class TVirtualStreamerInfo;
 
@@ -69,8 +68,15 @@ private:
 
    /// Used when the file container turns out to be a bare file
    RResult<RNTuple> GetNTupleBare(std::string_view ntupleName);
-   /// Used when the file turns out to be a TFile container
-   RResult<RNTuple> GetNTupleProper(std::string_view ntupleName);
+   /// Used when the file turns out to be a TFile container. The ntuplePath variable is either the ntuple name
+   /// or an ntuple name preceded by a directory (`myNtuple` or `foo/bar/myNtuple` or `/foo/bar/myNtuple`)
+   RResult<RNTuple> GetNTupleProper(std::string_view ntuplePath);
+
+   /// Searches for a key with the given name and type in the key index of the directory starting at offsetDir.
+   /// The offset points to the start of the TDirectory DATA section, without the key and without the name and title
+   /// of the TFile record (the root directory).
+   /// Return 0 if the key was not found. Otherwise returns the offset of found key.
+   std::uint64_t SearchInDirectory(std::uint64_t &offsetDir, std::string_view keyName, std::string_view typeName);
 
 public:
    RMiniFileReader() = default;
@@ -101,14 +107,21 @@ A stand-alone version of RNTuple can remove the TFile based writer.
 */
 // clang-format on
 class RNTupleFileWriter {
+public:
+   /// The key length of a blob. It is always a big key (version > 1000) with class name RBlob.
+   static constexpr std::size_t kBlobKeyLen = 42;
+
 private:
    struct RFileProper {
-      TFile *fFile = nullptr;
+      /// A sub directory in fFile or nullptr if the data is stored in the root directory of the file
+      TDirectory *fDirectory = nullptr;
       /// Low-level writing using a TFile
       void Write(const void *buffer, size_t nbytes, std::int64_t offset);
-      /// Writes an RBlob opaque key with the provided buffer as data record and returns the offset of the record
-      std::uint64_t WriteKey(const void *buffer, size_t nbytes, size_t len);
-      operator bool() const { return fFile; }
+      /// Reserves an RBlob opaque key as data record and returns the offset of the record. If keyBuffer is specified,
+      /// it must be written *before* the returned offset. (Note that the array type is purely documentation, the
+      /// argument is actually just a pointer.)
+      std::uint64_t ReserveBlobKey(size_t nbytes, size_t len, unsigned char keyBuffer[kBlobKeyLen] = nullptr);
+      operator bool() const { return fDirectory; }
    };
 
    struct RFileSimple {
@@ -155,6 +168,10 @@ private:
       std::uint64_t WriteKey(const void *buffer, std::size_t nbytes, std::size_t len, std::int64_t offset = -1,
                              std::uint64_t directoryOffset = 100, const std::string &className = "",
                              const std::string &objectName = "", const std::string &title = "");
+      /// Reserves an RBlob opaque key as data record and returns the offset of the record. If keyBuffer is specified,
+      /// it must be written *before* the returned offset. (Note that the array type is purely documentation, the
+      /// argument is actually just a pointer.)
+      std::uint64_t ReserveBlobKey(std::size_t nbytes, std::size_t len, unsigned char keyBuffer[kBlobKeyLen] = nullptr);
       operator bool() const { return fFile; }
    };
 
@@ -203,8 +220,9 @@ public:
    static std::unique_ptr<RNTupleFileWriter> Recreate(std::string_view ntupleName, std::string_view path,
                                                       EContainerFormat containerFormat,
                                                       const RNTupleWriteOptions &options);
-   /// Add a new RNTuple identified by ntupleName to the existing TFile.
-   static std::unique_ptr<RNTupleFileWriter> Append(std::string_view ntupleName, TFile &file, std::uint64_t maxKeySize);
+   /// The directory parameter can also be a TFile object (TFile inherits from TDirectory).
+   static std::unique_ptr<RNTupleFileWriter>
+   Append(std::string_view ntupleName, TDirectory &fileOrDirectory, std::uint64_t maxKeySize);
 
    RNTupleFileWriter(const RNTupleFileWriter &other) = delete;
    RNTupleFileWriter(RNTupleFileWriter &&other) = delete;
@@ -218,8 +236,9 @@ public:
    std::uint64_t WriteNTupleFooter(const void *data, size_t nbytes, size_t lenFooter);
    /// Writes a new record as an RBlob key into the file
    std::uint64_t WriteBlob(const void *data, size_t nbytes, size_t len);
-   /// Reserves a new record as an RBlob key in the file.
-   std::uint64_t ReserveBlob(size_t nbytes, size_t len);
+   /// Reserves a new record as an RBlob key in the file. If keyBuffer is specified, it must be written *before* the
+   /// returned offset. (Note that the array type is purely documentation, the argument is actually just a pointer.)
+   std::uint64_t ReserveBlob(size_t nbytes, size_t len, unsigned char keyBuffer[kBlobKeyLen] = nullptr);
    /// Write into a reserved record; the caller is responsible for making sure that the written byte range is in the
    /// previously reserved key.
    void WriteIntoReservedBlob(const void *buffer, size_t nbytes, std::int64_t offset);
