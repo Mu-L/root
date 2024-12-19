@@ -105,7 +105,7 @@ class HeadNode(Node, ABC):
 
         # Internal RDataFrame object, useful to expose information such as
         # column names.
-        self._localdf = localdf
+        self.rdf_node = localdf
 
         # A dictionary where the keys are the IDs of the objects to live visualize
         # and the values are the corresponding callback functions 
@@ -119,8 +119,8 @@ class HeadNode(Node, ABC):
         the garbage collector, the cppyy memory regulator and the C++ object
         destructor.
         """
-        if hasattr(self, "_localdf"):
-            del self._localdf
+        if hasattr(self, "rdf_node"):
+            del self.rdf_node
 
     @property
     def npartitions(self) -> Optional[int]:
@@ -237,10 +237,14 @@ class HeadNode(Node, ABC):
 
         computation_graph_callable = partial(ComputationGraphGenerator.trigger_computation_graph, self._generate_graph_dict())
 
+        # Accumulate all code that needs to be declared in one string
+        code_to_declare = "\n".join(self.backend.strings_to_declare.values())
+
         mapper = partial(distrdf_mapper,
                          build_rdf_from_range=self._generate_rdf_creator(),
                          computation_graph_callable=computation_graph_callable,
-                         initialization_fn=self.backend.initialization)
+                         initialization_fn=self.backend.initialization,
+                         code_to_declare=code_to_declare)
 
         # List of action nodes in the same order as values
         local_nodes = self._get_action_nodes()
@@ -483,7 +487,7 @@ class TreeHeadNode(HeadNode):
             # Depending on the cluster setup, this may still be quite costly, so
             # we decide to pay the price only if the user explicitly requested
             # warning logging.
-            clusters, entries = Ranges.get_clusters_and_entries(self.subtreenames[0], self.inputfiles[0])
+            clusters, entries = ROOT.Internal.TreeUtils.GetClustersAndEntries(self.subtreenames[0], self.inputfiles[0])
             # The file could contain an empty tree. In that case, the estimate will not be computed.
             if entries > 0:
                 partitionsperfile = self.npartitions / len(self.inputfiles)
@@ -663,7 +667,7 @@ class RDatasetSpecHeadNode(HeadNode):
             # Depending on the cluster setup, this may still be quite costly, so
             # we decide to pay the price only if the user explicitly requested
             # warning logging.
-            clusters, entries = Ranges.get_clusters_and_entries(
+            clusters, entries = ROOT.Internal.TreeUtils.GetClustersAndEntries(
                 self.subtreenames[0], self.inputfiles[0])
             # The file could contain an empty tree. In that case, the estimate will not be computed.
             if entries > 0:

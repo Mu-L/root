@@ -343,6 +343,13 @@ TEST(TClingCallFunc, GH_14425)
                               GH_14425_Copyable(GH_14425_Copyable &&o) : fMember(o.fMember) { o.fMember = 0; }
                            };
                            int GH_14425_h(GH_14425_Copyable p) { return p.fMember; }
+                           struct GH_14425_TriviallyCopyable {
+                              int fMember;
+                              GH_14425_TriviallyCopyable(int m = 1) : fMember(m) {}
+                              GH_14425_TriviallyCopyable(const GH_14425_TriviallyCopyable &) = default;
+                              GH_14425_TriviallyCopyable(GH_14425_TriviallyCopyable &&o) : fMember(o.fMember) { o.fMember = 0; }
+                           };
+                           int GH_14425_i(GH_14425_TriviallyCopyable p) { return p.fMember; }
                            struct GH_14425_Default {
                               int fMember;
                               GH_14425_Default(GH_14425 p = GH_14425()) : fMember(p.fMember) {}
@@ -382,6 +389,16 @@ TEST(TClingCallFunc, GH_14425)
    // The original value should not have changed; if it did, TClingCallFunc called the move constructor.
    EXPECT_EQ(objCopyable, 4);
 
+   CallFuncRAII CfTriviallyCopyableRAII("", "GH_14425_i", "GH_14425_TriviallyCopyable");
+   CallFunc_t *CfTriviallyCopyable = CfTriviallyCopyableRAII.GetCF();
+   // Cheat a bit: GH_14425_TriviallyCopyable has only one int fMember in memory...
+   int objTriviallyCopyable = 5;
+   gInterpreter->CallFunc_SetArg(CfTriviallyCopyable, &objTriviallyCopyable);
+   int valTriviallyCopyable = gInterpreter->CallFunc_ExecInt(CfTriviallyCopyable, /*address*/ 0);
+   EXPECT_EQ(valTriviallyCopyable, 5);
+   // The original value should not have changed; if it did, TClingCallFunc called the move constructor.
+   EXPECT_EQ(objTriviallyCopyable, 5);
+
    CallFuncRAII CfConstructorDefaultRAII("GH_14425_Default", "GH_14425_Default", "");
    int *valConstructorDefault;
    gInterpreter->CallFunc_ExecWithReturn(CfConstructorDefaultRAII.GetCF(), /*address*/ 0, &valConstructorDefault);
@@ -414,7 +431,14 @@ TEST(TClingCallFunc, GH_14425_Virtual)
       GH_14425_Virtual(int m = 1) : fMember(m) {}
       GH_14425_Virtual(const GH_14425_Virtual &) = default;
       GH_14425_Virtual(GH_14425_Virtual &&o) : fMember(o.fMember) { o.fMember = 0; }
-      void f() {}
+      virtual void f() {}
+   };
+   struct GH_14425_Virtual_User {
+      int fMember;
+      GH_14425_Virtual_User(int m = 1) : fMember(m) {}
+      GH_14425_Virtual_User(const GH_14425_Virtual_User &o) : fMember(o.fMember) {}
+      GH_14425_Virtual_User(GH_14425_Virtual_User &&o) : fMember(o.fMember) { o.fMember = 0; }
+      virtual void f() {}
    };
    gInterpreter->Declare(R"cpp(
                            struct GH_14425_Virtual {
@@ -422,9 +446,17 @@ TEST(TClingCallFunc, GH_14425_Virtual)
                               GH_14425_Virtual(int m = 1) : fMember(m) {}
                               GH_14425_Virtual(const GH_14425_Virtual &) = default;
                               GH_14425_Virtual(GH_14425_Virtual &&o) : fMember(o.fMember) { o.fMember = 0; }
-                              void f() {}
+                              virtual void f() {}
                            };
                            int GH_14425_v(GH_14425_Virtual p) { return p.fMember; }
+                           struct GH_14425_Virtual_User {
+                              int fMember;
+                              GH_14425_Virtual_User(int m = 1) : fMember(m) {}
+                              GH_14425_Virtual_User(const GH_14425_Virtual_User &o) : fMember(o.fMember) {}
+                              GH_14425_Virtual_User(GH_14425_Virtual_User &&o) : fMember(o.fMember) { o.fMember = 0; }
+                              virtual void f() {}
+                           };
+                           int GH_14425_vu(GH_14425_Virtual_User p) { return p.fMember; }
                            )cpp");
    CallFuncRAII CfVirtualRAII("", "GH_14425_v", "GH_14425_Virtual");
    CallFunc_t *CfVirtual = CfVirtualRAII.GetCF();
@@ -434,6 +466,15 @@ TEST(TClingCallFunc, GH_14425_Virtual)
    EXPECT_EQ(valVirtual, 2);
    // The original value should not have changed; if it did, TClingCallFunc called the move constructor.
    EXPECT_EQ(objVirtual.fMember, 2);
+
+   CallFuncRAII CfVirtualUserRAII("", "GH_14425_vu", "GH_14425_Virtual_User");
+   CallFunc_t *CfVirtualUser = CfVirtualUserRAII.GetCF();
+   GH_14425_Virtual_User objVirtualUser(3);
+   gInterpreter->CallFunc_SetArg(CfVirtualUser, &objVirtualUser);
+   int valVirtualUser = gInterpreter->CallFunc_ExecInt(CfVirtualUser, /*address*/ 0);
+   EXPECT_EQ(valVirtualUser, 3);
+   // The original value should not have changed; if it did, TClingCallFunc called the move constructor.
+   EXPECT_EQ(objVirtualUser.fMember, 3);
 }
 
 TEST(TClingCallFunc, GH_14425_Templates)

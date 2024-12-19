@@ -69,7 +69,7 @@ public:
    {
       if (std::find(fCreateContext.fClassesOnStack.begin(), fCreateContext.fClassesOnStack.end(), cl) !=
           fCreateContext.fClassesOnStack.end()) {
-         throw ROOT::Experimental::RException(R__FAIL("cyclic class definition: " + cl));
+         throw ROOT::RException(R__FAIL("cyclic class definition: " + cl));
       }
       fCreateContext.fClassesOnStack.emplace_back(cl);
    }
@@ -263,7 +263,7 @@ std::string ROOT::Experimental::RFieldBase::GetQualifiedFieldName() const
    return result;
 }
 
-ROOT::Experimental::RResult<std::unique_ptr<ROOT::Experimental::RFieldBase>>
+ROOT::RResult<std::unique_ptr<ROOT::Experimental::RFieldBase>>
 ROOT::Experimental::RFieldBase::Create(const std::string &fieldName, const std::string &typeName)
 {
    auto typeAlias = Internal::GetNormalizedTypeName(typeName);
@@ -292,7 +292,7 @@ ROOT::Experimental::RFieldBase::Check(const std::string &fieldName, const std::s
    return result;
 }
 
-ROOT::Experimental::RResult<std::unique_ptr<ROOT::Experimental::RFieldBase>>
+ROOT::RResult<std::unique_ptr<ROOT::Experimental::RFieldBase>>
 ROOT::Experimental::RFieldBase::Create(const std::string &fieldName, const std::string &canonicalType,
                                        const std::string &typeAlias, bool continueOnError)
 {
@@ -620,7 +620,7 @@ std::size_t ROOT::Experimental::RFieldBase::ReadBulkImpl(const RBulkSpec &bulkSp
    std::size_t nRead = 0;
    for (std::size_t i = 0; i < bulkSpec.fCount; ++i) {
       // Value not needed
-      if (!bulkSpec.fMaskReq[i])
+      if (bulkSpec.fMaskReq && !bulkSpec.fMaskReq[i])
          continue;
 
       // Value already present
@@ -879,7 +879,7 @@ size_t ROOT::Experimental::RFieldBase::AddReadCallback(ReadCallback_t func)
 void ROOT::Experimental::RFieldBase::RemoveReadCallback(size_t idx)
 {
    fReadCallbacks.erase(fReadCallbacks.begin() + idx);
-   fIsSimple = (fTraits & kTraitMappable) && fReadCallbacks.empty();
+   fIsSimple = (fTraits & kTraitMappable) && !fIsArtificial && fReadCallbacks.empty();
 }
 
 void ROOT::Experimental::RFieldBase::AutoAdjustColumnTypes(const RNTupleWriteOptions &options)
@@ -946,6 +946,8 @@ void ROOT::Experimental::RFieldBase::ConnectPageSource(Internal::RPageSource &pa
    if (!fDescription.empty())
       throw RException(R__FAIL("setting description only valid when connecting to a page sink"));
 
+   BeforeConnectPageSource(pageSource);
+
    for (auto &f : fSubFields) {
       if (f->GetOnDiskId() == kInvalidDescriptorId) {
          f->SetOnDiskId(pageSource.GetSharedDescriptorGuard()->FindFieldId(f->GetFieldName(), GetOnDiskId()));
@@ -953,7 +955,8 @@ void ROOT::Experimental::RFieldBase::ConnectPageSource(Internal::RPageSource &pa
       f->ConnectPageSource(pageSource);
    }
 
-   {
+   // Do not generate columns nor set fColumnRepresentatives for artificial fields.
+   if (!fIsArtificial) {
       const auto descriptorGuard = pageSource.GetSharedDescriptorGuard();
       const RNTupleDescriptor &desc = descriptorGuard.GetRef();
       GenerateColumns(desc);

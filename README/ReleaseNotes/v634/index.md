@@ -87,9 +87,9 @@ The following interfaces are deprecated and will be removed in future releases:
 - The `RooTemplateProxy` constructors that take a `proxyOwnsArg` parameter to manually pass ownership are deprecated and replaced by a new constructor that takes ownership via `std::unique_ptr<T>`. They will be removed in ROOT 6.36.
 - Several RooFit legacy functions are deprecated and will be removed in ROOT 6.36 (see section "RooFit libraries")
 - The `int ROOT::CompressionSettings(ROOT::ECompressionAlgorithm algorithm, int compressionLevel)` function is deprecated and will be removed in ROOT 6.36. Please use `int CompressionSettings(RCompressionSetting::EAlgorithm::EValues algorithm, int compressionLevel)` instead.
-- The `void R__zip(int cxlevel, int *srcsize, char *src, int *tgtsize, char *tgt, int *irep)`  is deprecated and will be removed in ROOT 6.36. Please use `void R__zipMultipleAlgorithm(int cxlevel, int *srcsize, char *src, int *tgtsize, char *tgt, int *irep, ROOT::RCompressionSetting::EAlgorithm::EValues algorithm)` instead.
-- The `Bool_t TGeoShape::AreOverlapping(const TGeoBBox *box1, const TGeoMatrix *mat1, const TGeoBBox *box2, const TGeoMatrix *mat2)` is deprecated and will be removed in ROOT 6.36.
-- The `TPython::Eval()` function that is deprecated scheduled for removal in ROOT 6.36.
+- The `void R__zip(int cxlevel, int *srcsize, char *src, int *tgtsize, char *tgt, int *irep)` function is deprecated and will be removed in ROOT 6.36. Please use `void R__zipMultipleAlgorithm(int cxlevel, int *srcsize, char *src, int *tgtsize, char *tgt, int *irep, ROOT::RCompressionSetting::EAlgorithm::EValues algorithm)` instead.
+- The `Bool_t TGeoShape::AreOverlapping(const TGeoBBox *box1, const TGeoMatrix *mat1, const TGeoBBox *box2, const TGeoMatrix *mat2)` function is deprecated and will be removed in ROOT 6.36.
+- The `TPython::Eval()` function is deprecated and scheduled for removal in ROOT 6.36.
 
 
 ## Core Libraries
@@ -222,8 +222,6 @@ This enables the latest ATLAS Higgs combination fits to complete successfully, a
 
 * Initial error values can be used for initializating the Hessian matrix to be used in Minuit2 minimization algorithms by setting the `RooMinimizer::Config` option `setInitialCovariance` to `true`. These values correspond to the diagonal entries of the initial covariance matrix.
 
-* Fixed a bug where in some circumstances `hadd` would not correctly merge objects in nested folders of a ROOT file.
-
 * `RooFit::MultiProcess`-enabled fitting developer/advanced documentation -- [available through GitHub](https://github.com/root-project/root/blob/master/roofit/doc/developers/test_statistics.md) -- was updated. It now contains the most up to date usage instructions for optimizing load balancing (and hence run speed) using this backend.
 
 ### Deprecations
@@ -305,7 +303,7 @@ TCanvas::SaveAll({c1, c2, c3, c4}, "file.pdf");
 
 ## Geometry Libraries
 
-The geometry package is now optional and activated by default in the CMake configuration. To disable it, use the `-Dgeometry=OFF` CMake option.
+The geometry package is now optional and activated by default in the CMake configuration. To disable it, use the `-Dgeom=OFF` CMake option.
 
 ## Web-based GUIs
 
@@ -398,6 +396,13 @@ Upgrade to JSROOT 7.8.0 with following new features and fixes:
 39. Fix - geometry display on android devices
 
 JSROOT is now used as default display in `jupyter`.
+
+
+## Tools
+
+### hadd
+
+* Fixed a bug where in some circumstances `hadd` would not correctly merge objects in nested folders of a ROOT file.
 
 
 ## Tutorials
@@ -622,3 +627,18 @@ More than 200 items were addressed for this release. The full list is:
 * [[ROOT-5843](https://its.cern.ch/jira/browse/ROOT-5843)] - List of loaded libraries
 * [[ROOT-5439](https://its.cern.ch/jira/browse/ROOT-5439)] - Dump-output of TH1 not showing pointerness of fArray
 * [[ROOT-2345](https://its.cern.ch/jira/browse/ROOT-2345)] - Optimize TMatrixDSparse operation kAtA
+
+## Release 6.34.02
+
+Published on December 16, 2024
+
+### Items addressed in this release
+
+This release includes a few minor fixes in RDataFrame and RooFit, besides the item below. Moreover, built-in Davix was patched to build with GCC14 while waiting for the new Davix release.
+
+* [[#17145](https://github.com/root-project/root/issues/17145)] - Distributed RDataFrame cannot deal with same column name in different branches
+- [[#17190](https://github.com/root-project/root/issues/17190)] - Compiler error with GCC 14.2.0 related to Davix
+* [[#17222](https://github.com/root-project/root/issues/17222)] - Regression in Python ownership for histograms within subdirectories with ROOT 6.34.00
+- [[#17223](https://github.com/root-project/root/issues/17223)] - TFileMerger leaves files open resulting in corrupt metadata
+
+## HEAD of the v6-34-00-patches branch
