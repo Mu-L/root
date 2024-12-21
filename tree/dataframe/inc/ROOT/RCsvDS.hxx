@@ -52,7 +52,8 @@ public:
       /// Note that the comment character must not be part of the data, e.g. in strings.
       char fComment = '\0';
       /// Impose column names. This can be used if a header is missing or if the header has unparsable or
-      /// unwanted column names.
+      /// unwanted column names. If this list is not empty, it must contain exactly as many elements as
+      /// the number of columns in the CSV file.
       std::vector<std::string> fColumnNames;
       /// Specify custom column types, accepts an unordered map with keys being column name, values being type alias
       /// ('O' for boolean, 'D' for double, 'L' for Long64_t, 'T' for std::string)
@@ -112,8 +113,14 @@ public:
    RCsvDS(std::string_view fileName, const ROptions &options);
    RCsvDS(std::string_view fileName, bool readHeaders = true, char delimiter = ',', Long64_t linesChunkSize = -1LL,
           std::unordered_map<std::string, char> &&colTypes = {});
+   // Rule of five
+   RCsvDS(const RCsvDS &) = delete;
+   RCsvDS &operator=(const RCsvDS &) = delete;
+   RCsvDS(RCsvDS &&) = delete;
+   RCsvDS &operator=(RCsvDS &&) = delete;
+   ~RCsvDS() final;
+
    void Finalize() final;
-   ~RCsvDS();
    std::size_t GetNFiles() const final { return 1; }
    const std::vector<std::string> &GetColumnNames() const final;
    std::vector<std::pair<ULong64_t, ULong64_t>> GetEntryRanges() final;

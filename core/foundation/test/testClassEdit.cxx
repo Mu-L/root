@@ -260,17 +260,35 @@ TEST(TClassEdit, GetNameForIO)
    }
 }
 
-// ROOT-10574
+// ROOT-10574, https://github.com/root-project/root/issues/17295
 TEST(TClassEdit, ResolveTypedef)
 {
    gInterpreter->Declare("struct testPoint{}; typedef struct testPoint testPoint;");
    std::string non_existent = TClassEdit::ResolveTypedef("testPointAA");
    EXPECT_STREQ("testPointAA", non_existent.c_str());
    EXPECT_STRNE("::testPoint", TClassEdit::ResolveTypedef("::testPointXX").c_str());
+   gInterpreter->Declare("typedef const int mytype_t;");
+   gInterpreter->Declare("typedef const int cmytype_t;");
+   EXPECT_STREQ("const int", TClassEdit::ResolveTypedef("mytype_t").c_str());
+   EXPECT_STREQ("const int", TClassEdit::ResolveTypedef("cmytype_t").c_str());
 }
 
 // ROOT-11000
 TEST(TClassEdit, DefComp)
 {
    EXPECT_FALSE(TClassEdit::IsDefComp("std::less<>", "std::string"));
+}
+
+// https://github.com/root-project/root/issues/6607
+TEST(TClassEdit, DefAlloc)
+{
+   EXPECT_TRUE(TClassEdit::IsDefAlloc("class std::allocator<float>", "float"));
+}
+
+// https://github.com/root-project/root/issues/6607
+TEST(TClassEdit, GetNormalizedName)
+{
+   std::string n;
+   TClassEdit::GetNormalizedName(n, "std::vector<float, class std::allocator<float>>");
+   EXPECT_STREQ("vector<float>", n.c_str());
 }

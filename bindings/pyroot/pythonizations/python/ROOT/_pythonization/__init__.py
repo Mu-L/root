@@ -24,7 +24,7 @@ from ._generic import pythonize_generic
 
 
 def pythonization(class_name, ns='::', is_prefix=False):
-    '''
+    r'''
     \ingroup Pythonizations
     Decorator that allows to pythonize C++ classes. To pythonize means to add
     some extra behaviour to a C++ class that is used from Python via PyROOT,
@@ -55,6 +55,7 @@ def pythonization(class_name, ns='::', is_prefix=False):
     Returns:
         function: function that receives the user-defined function and
             decorates it.
+
     '''
 
     # Type check and parsing of target argument.

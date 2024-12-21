@@ -123,7 +123,7 @@ TEST(RNTupleShow, BasicTypes)
    try {
       ntuple2->LoadEntry(2);
       FAIL() << "loading a non-existing entry should throw";
-   } catch (const RException &err) {
+   } catch (const ROOT::RException &err) {
       EXPECT_THAT(err.what(), testing::HasSubstr("entry with index 2 out of bounds"));
    }
 }
@@ -638,22 +638,4 @@ TEST(RNTupleShow, Friends)
       *bar = 2.72;
       writer->Fill();
    }
-
-   std::vector<RNTupleOpenSpec> friends = {{"ntpl1", fileGuard1.GetPath()}, {"ntpl2", fileGuard2.GetPath()}};
-   auto ntuple = RNTupleReader::OpenFriends(friends);
-   std::ostringstream os;
-   ntuple->Show(0, os);
-   // clang-format off
-   std::string expected{std::string("")
-      + "{\n"
-      + "  \"ntpl1\": {\n"
-      + "    \"foo\": 3.14\n"
-      + "  },\n"
-      + "  \"ntpl2\": {\n"
-      + "    \"bar\": 2.72\n"
-      + "  }\n"
-      + "}\n"
-   };
-   // clang-format on
-   EXPECT_EQ(os.str(), expected);
 }

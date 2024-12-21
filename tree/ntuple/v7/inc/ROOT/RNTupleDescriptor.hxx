@@ -279,6 +279,10 @@ public:
       std::size_t ExtendToFitColumnRange(const RColumnRange &columnRange, const Internal::RColumnElementBase &element,
                                          std::size_t pageSize);
 
+      /// Has the same length than fPageInfos and stores the sum of the number of elements of all the pages
+      /// up to and including a given index. Used for binary search in Find().
+      std::vector<NTupleSize_t> fCumulativeNElements;
+
    public:
       /// We do not need to store the element size / uncompressed page size because we know to which column
       /// the page belongs
@@ -319,6 +323,7 @@ public:
          RPageRange clone;
          clone.fPhysicalColumnId = fPhysicalColumnId;
          clone.fPageInfos = fPageInfos;
+         clone.fCumulativeNElements = fCumulativeNElements;
          return clone;
       }
 
@@ -427,6 +432,7 @@ class RClusterGroupDescriptor {
 private:
    DescriptorId_t fClusterGroupId = kInvalidDescriptorId;
    /// The cluster IDs can be empty if the corresponding page list is not loaded.
+   /// Otherwise, cluster ids are sorted by first entry number.
    std::vector<DescriptorId_t> fClusterIds;
    /// The page list that corresponds to the cluster group
    RNTupleLocator fPageListLocator;
@@ -561,11 +567,18 @@ private:
    std::unordered_map<DescriptorId_t, RFieldDescriptor> fFieldDescriptors;
    std::unordered_map<DescriptorId_t, RColumnDescriptor> fColumnDescriptors;
    std::unordered_map<DescriptorId_t, RClusterGroupDescriptor> fClusterGroupDescriptors;
+   /// References cluster groups sorted by entry range and thus allows for binary search.
+   /// Note that this list is empty during the descriptor building process and will only be
+   /// created when the final descriptor is extracted from the builder.
+   std::vector<DescriptorId_t> fSortedClusterGroupIds;
    /// May contain only a subset of all the available clusters, e.g. the clusters of the current file
    /// from a chain of files
    std::unordered_map<DescriptorId_t, RClusterDescriptor> fClusterDescriptors;
    std::vector<RExtraTypeInfoDescriptor> fExtraTypeInfoDescriptors;
    std::unique_ptr<RHeaderExtension> fHeaderExtension;
+
+   // We don't expose this publicly because when we add sharded clusters, this interface does not make sense anymore
+   DescriptorId_t FindClusterId(NTupleSize_t entryIdx) const;
 
 public:
    static constexpr unsigned int kFeatureFlagTest = 137; // Bit reserved for forward-compatibility testing
@@ -1302,7 +1315,7 @@ public:
       fClusterGroup.fNClusters = nClusters;
       return *this;
    }
-   void AddClusters(const std::vector<DescriptorId_t> &clusterIds)
+   void AddSortedClusters(const std::vector<DescriptorId_t> &clusterIds)
    {
       if (clusterIds.size() != fClusterGroup.GetNClusters())
          throw RException(R__FAIL("mismatch of number of clusters"));
