@@ -80,6 +80,7 @@ protected:
    // clang-format on
    class RFieldContext {
       friend class RNTupleProcessor;
+      friend class RNTupleSingleProcessor;
       friend class RNTupleChainProcessor;
       friend class RNTupleJoinProcessor;
 
@@ -121,8 +122,8 @@ protected:
    //////////////////////////////////////////////////////////////////////////
    /// \brief Advance the processor to the next available entry.
    ///
-   /// \return The updated number of entries processed so far after advancing, or kInvalidNTupleIndex if the last
-   /// (global) entry has been processed.
+   /// \return The number of the entry loaded after advancing, or kInvalidNTupleIndex if there was no entry to advance
+   /// to.
    ///
    /// Checks if the end of the currently connected RNTuple is reached. If this is the case, either the next RNTuple
    /// is connected or the iterator has reached the end.
@@ -131,6 +132,13 @@ protected:
    /////////////////////////////////////////////////////////////////////////////
    /// \brief Fill the entry with values belonging to the current entry number.
    virtual void LoadEntry() = 0;
+
+   /////////////////////////////////////////////////////////////////////////////
+   /// \brief Set the local (i.e. relative to the page source currently openend) entry number. Used by
+   /// `RNTupleProcessor::RIterator`.
+   ///
+   /// \param[in] entryNumber
+   void SetLocalEntryNumber(NTupleSize_t entryNumber) { fLocalEntryNumber = entryNumber; }
 
    RNTupleProcessor(const std::vector<RNTupleOpenSpec> &ntuples)
       : fNTuples(ntuples), fNEntriesProcessed(0), fCurrentNTupleNumber(0), fLocalEntryNumber(0)
@@ -177,7 +185,7 @@ public:
    class RIterator {
    private:
       RNTupleProcessor &fProcessor;
-      NTupleSize_t fNEntriesProcessed;
+      NTupleSize_t fCurrentEntryNumber;
 
    public:
       using iterator_category = std::forward_iterator_tag;
@@ -187,21 +195,28 @@ public:
       using pointer = REntry *;
       using reference = const REntry &;
 
-      RIterator(RNTupleProcessor &processor, NTupleSize_t globalEntryNumber)
-         : fProcessor(processor), fNEntriesProcessed(globalEntryNumber)
+      RIterator(RNTupleProcessor &processor, NTupleSize_t entryNumber)
+         : fProcessor(processor), fCurrentEntryNumber(entryNumber)
       {
+         // This constructor is called with kInvalidNTupleIndex for RNTupleProcessor::end(). In that case, we already
+         // know there is nothing to advance to.
+         if (fCurrentEntryNumber != kInvalidNTupleIndex) {
+            fProcessor.SetLocalEntryNumber(fCurrentEntryNumber);
+            fCurrentEntryNumber = fProcessor.Advance();
+         }
       }
 
       iterator operator++()
       {
-         fNEntriesProcessed = fProcessor.Advance();
+         fProcessor.SetLocalEntryNumber(fCurrentEntryNumber + 1);
+         fCurrentEntryNumber = fProcessor.Advance();
          return *this;
       }
 
       iterator operator++(int)
       {
          auto obj = *this;
-         obj.fNEntriesProcessed = fProcessor.Advance();
+         ++(*this);
          return obj;
       }
 
@@ -213,16 +228,19 @@ public:
 
       friend bool operator!=(const iterator &lh, const iterator &rh)
       {
-         return lh.fNEntriesProcessed != rh.fNEntriesProcessed;
+         return lh.fCurrentEntryNumber != rh.fCurrentEntryNumber;
       }
       friend bool operator==(const iterator &lh, const iterator &rh)
       {
-         return lh.fNEntriesProcessed == rh.fNEntriesProcessed;
+         return lh.fCurrentEntryNumber == rh.fCurrentEntryNumber;
       }
    };
 
    RIterator begin() { return RIterator(*this, 0); }
    RIterator end() { return RIterator(*this, kInvalidNTupleIndex); }
+
+   static std::unique_ptr<RNTupleProcessor> Create(const RNTupleOpenSpec &ntuple);
+   static std::unique_ptr<RNTupleProcessor> Create(const RNTupleOpenSpec &ntuple, RNTupleModel &model);
 
    /////////////////////////////////////////////////////////////////////////////
    /// \brief Create a new RNTuple processor chain for vertical concatenation of RNTuples.
@@ -254,6 +272,30 @@ public:
    static std::unique_ptr<RNTupleProcessor> CreateJoin(const std::vector<RNTupleOpenSpec> &ntuples,
                                                        const std::vector<std::string> &joinFields,
                                                        std::vector<std::unique_ptr<RNTupleModel>> models = {});
+};
+
+// clang-format off
+/**
+\class ROOT::Experimental::RNTupleSingleProcessor
+\ingroup NTuple
+\brief Processor specializiation for processing a single RNTuple.
+*/
+// clang-format on
+class RNTupleSingleProcessor : public RNTupleProcessor {
+   friend class RNTupleProcessor;
+
+private:
+   /////////////////////////////////////////////////////////////////////////////
+   /// \brief Constructs a new RNTupleProcessor for processing a single RNTuple.
+   ///
+   /// \param[in] ntuple The source specification (name and storage location) for the RNTuple to process.
+   /// \param[in] model The model that specifies which fields should be read by the processor.
+   RNTupleSingleProcessor(const RNTupleOpenSpec &ntuple, RNTupleModel &model);
+
+   NTupleSize_t Advance() final;
+
+public:
+   void LoadEntry() { fEntry->Read(fLocalEntryNumber); }
 };
 
 // clang-format off

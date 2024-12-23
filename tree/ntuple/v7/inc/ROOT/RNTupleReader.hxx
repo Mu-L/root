@@ -88,6 +88,8 @@ private:
    /// not on a hot code path.
    std::unique_ptr<RNTupleDescriptor> fCachedDescriptor;
    Detail::RNTupleMetrics fMetrics;
+   /// If not nullopt, these will used when creating the model
+   std::optional<RNTupleDescriptor::RCreateModelOptions> fCreateModelOptions;
 
    RNTupleReader(std::unique_ptr<RNTupleModel> model, std::unique_ptr<Internal::RPageSource> source,
                  const RNTupleReadOptions &options);
@@ -153,17 +155,21 @@ public:
                                               const RNTupleReadOptions &options = RNTupleReadOptions());
    static std::unique_ptr<RNTupleReader>
    Open(const RNTuple &ntuple, const RNTupleReadOptions &options = RNTupleReadOptions());
+
    /// The caller imposes a model, which must be compatible with the model found in the data on storage.
    static std::unique_ptr<RNTupleReader> Open(std::unique_ptr<RNTupleModel> model, std::string_view ntupleName,
                                               std::string_view storage,
                                               const RNTupleReadOptions &options = RNTupleReadOptions());
    static std::unique_ptr<RNTupleReader> Open(std::unique_ptr<RNTupleModel> model, const RNTuple &ntuple,
                                               const RNTupleReadOptions &options = RNTupleReadOptions());
-   /// Open RNTuples as one virtual, horizontally combined ntuple.  The underlying RNTuples must
-   /// have an identical number of entries.  Fields in the combined RNTuple are named with the ntuple name
-   /// as a prefix, e.g. myNTuple1.px and myNTuple2.pt (see tutorial ntpl006_friends)
-   static std::unique_ptr<RNTupleReader>
-   OpenFriends(std::span<RNTupleOpenSpec> ntuples, const RNTupleReadOptions &options = RNTupleReadOptions());
+
+   /// The caller imposes the way the model is reconstructed
+   static std::unique_ptr<RNTupleReader> Open(const RNTupleDescriptor::RCreateModelOptions &createModelOpts,
+                                              std::string_view ntupleName, std::string_view storage,
+                                              const RNTupleReadOptions &options = RNTupleReadOptions());
+   static std::unique_ptr<RNTupleReader> Open(const RNTupleDescriptor::RCreateModelOptions &createModelOpts,
+                                              const RNTuple &ntuple,
+                                              const RNTupleReadOptions &options = RNTupleReadOptions());
    std::unique_ptr<RNTupleReader> Clone()
    {
       auto options = RNTupleReadOptions{};
@@ -220,7 +226,8 @@ public:
    {
       // TODO(jblomer): can be templated depending on the factory method / constructor
       if (R__unlikely(!fModel)) {
-         fModel = fSource->GetSharedDescriptorGuard()->CreateModel();
+         fModel = fSource->GetSharedDescriptorGuard()->CreateModel(
+            fCreateModelOptions.value_or(RNTupleDescriptor::RCreateModelOptions{}));
          ConnectModel(*fModel);
       }
       LoadEntry(index, fModel->GetDefaultEntry());

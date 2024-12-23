@@ -25,12 +25,26 @@ void EnsureUniqueNTupleNames(const std::vector<RNTupleOpenSpec> &ntuples)
    for (const auto &ntuple : ntuples) {
       auto res = uniqueNTupleNames.emplace(ntuple.fNTupleName);
       if (!res.second) {
-         throw ROOT::Experimental::RException(
-            R__FAIL("horizontal joining of RNTuples with the same name is not allowed"));
+         throw ROOT::RException(R__FAIL("horizontal joining of RNTuples with the same name is not allowed"));
       }
    }
 }
 } // anonymous namespace
+
+std::unique_ptr<ROOT::Experimental::RNTupleProcessor>
+ROOT::Experimental::RNTupleProcessor::Create(const RNTupleOpenSpec &ntuple)
+{
+   auto pageSource = Internal::RPageSource::Create(ntuple.fNTupleName, ntuple.fStorage);
+   pageSource->Attach();
+   auto model = pageSource->GetSharedDescriptorGuard()->CreateModel();
+   return RNTupleProcessor::Create(ntuple, *model);
+}
+
+std::unique_ptr<ROOT::Experimental::RNTupleProcessor>
+ROOT::Experimental::RNTupleProcessor::Create(const RNTupleOpenSpec &ntuple, RNTupleModel &model)
+{
+   return std::unique_ptr<RNTupleSingleProcessor>(new RNTupleSingleProcessor(ntuple, model));
+}
 
 std::unique_ptr<ROOT::Experimental::RNTupleProcessor>
 ROOT::Experimental::RNTupleProcessor::CreateChain(const std::vector<RNTupleOpenSpec> &ntuples,
@@ -105,6 +119,47 @@ void ROOT::Experimental::RNTupleProcessor::ConnectField(RFieldContext &fieldCont
 
 //------------------------------------------------------------------------------
 
+ROOT::Experimental::RNTupleSingleProcessor::RNTupleSingleProcessor(const RNTupleOpenSpec &ntuple, RNTupleModel &model)
+   : RNTupleProcessor({ntuple})
+{
+   fPageSource = Internal::RPageSource::Create(ntuple.fNTupleName, ntuple.fStorage);
+   fPageSource->Attach();
+
+   model.Freeze();
+   fEntry = model.CreateEntry();
+
+   for (const auto &value : *fEntry) {
+      auto &field = value.GetField();
+      auto token = fEntry->GetToken(field.GetFieldName());
+
+      // If the model has a default entry, use the value pointers from the entry in the entry managed by the
+      // processor. This way, the pointers returned by RNTupleModel::MakeField can be used in the processor loop to
+      // access the corresponding field values.
+      if (!model.IsBare()) {
+         auto valuePtr = model.GetDefaultEntry().GetPtr<void>(token);
+         fEntry->BindValue(token, valuePtr);
+      }
+
+      auto fieldContext = RFieldContext(field.Clone(field.GetFieldName()), token);
+      ConnectField(fieldContext, *fPageSource, *fEntry);
+      fFieldContexts.try_emplace(field.GetFieldName(), std::move(fieldContext));
+   }
+}
+
+ROOT::Experimental::NTupleSize_t ROOT::Experimental::RNTupleSingleProcessor::Advance()
+{
+   if (fLocalEntryNumber == kInvalidNTupleIndex || fLocalEntryNumber >= fPageSource->GetNEntries()) {
+      return kInvalidNTupleIndex;
+   }
+
+   LoadEntry();
+
+   fNEntriesProcessed++;
+   return fLocalEntryNumber;
+}
+
+//------------------------------------------------------------------------------
+
 ROOT::Experimental::RNTupleChainProcessor::RNTupleChainProcessor(const std::vector<RNTupleOpenSpec> &ntuples,
                                                                  std::unique_ptr<RNTupleModel> model)
    : RNTupleProcessor(ntuples)
@@ -164,9 +219,10 @@ ROOT::Experimental::NTupleSize_t ROOT::Experimental::RNTupleChainProcessor::Conn
 
 ROOT::Experimental::NTupleSize_t ROOT::Experimental::RNTupleChainProcessor::Advance()
 {
-   ++fNEntriesProcessed;
+   if (fLocalEntryNumber == kInvalidNTupleIndex)
+      return kInvalidNTupleIndex;
 
-   if (++fLocalEntryNumber >= fPageSource->GetNEntries()) {
+   if (fLocalEntryNumber >= fPageSource->GetNEntries()) {
       do {
          if (++fCurrentNTupleNumber >= fNTuples.size()) {
             return kInvalidNTupleIndex;
@@ -177,9 +233,10 @@ ROOT::Experimental::NTupleSize_t ROOT::Experimental::RNTupleChainProcessor::Adva
       fLocalEntryNumber = 0;
    }
 
-   fEntry->Read(fLocalEntryNumber);
+   LoadEntry();
 
-   return fNEntriesProcessed;
+   fNEntriesProcessed++;
+   return fLocalEntryNumber;
 }
 
 //------------------------------------------------------------------------------
@@ -326,46 +383,54 @@ void ROOT::Experimental::RNTupleJoinProcessor::ConnectFields()
 
 ROOT::Experimental::NTupleSize_t ROOT::Experimental::RNTupleJoinProcessor::Advance()
 {
-   ++fNEntriesProcessed;
-
-   if (fNEntriesProcessed >= fPageSource->GetNEntries()) {
+   if (fLocalEntryNumber == kInvalidNTupleIndex || fLocalEntryNumber >= fPageSource->GetNEntries()) {
       return kInvalidNTupleIndex;
    }
 
-   ++fLocalEntryNumber;
    LoadEntry();
 
-   return fNEntriesProcessed;
+   fNEntriesProcessed++;
+   return fLocalEntryNumber;
 }
 
 void ROOT::Experimental::RNTupleJoinProcessor::LoadEntry()
 {
+   // Read the values of the primary ntuple. If no index is used (i.e., the join is aligned), also read the values of
+   // auxiliary ntuples.
+   for (const auto &[_, fieldContext] : fFieldContexts) {
+      if (!fieldContext.IsAuxiliary() || !IsUsingIndex()) {
+         auto &value = fEntry->GetValue(fieldContext.fToken);
+         value.Read(fLocalEntryNumber);
+      }
+   }
+
+   // If no index is used (i.e., the join is aligned), there's nothing left to do.
+   if (!IsUsingIndex())
+      return;
+
+   // Collect the values of the join fields for this entry.
    std::vector<void *> valPtrs;
    valPtrs.reserve(fJoinFieldTokens.size());
-
    for (const auto &token : fJoinFieldTokens) {
       auto ptr = fEntry->GetPtr<void>(token);
       valPtrs.push_back(ptr.get());
    }
 
+   // Find the index entry number corresponding to the join field values for each auxiliary ntuple.
    std::vector<NTupleSize_t> indexEntryNumbers;
    indexEntryNumbers.reserve(fJoinIndices.size());
-   if (IsUsingIndex()) {
-      for (unsigned i = 0; i < fJoinIndices.size(); ++i) {
-         auto &joinIndex = fJoinIndices[i];
-         if (!joinIndex->IsBuilt())
-            joinIndex->Build();
+   for (unsigned i = 0; i < fJoinIndices.size(); ++i) {
+      auto &joinIndex = fJoinIndices[i];
+      if (!joinIndex->IsBuilt())
+         joinIndex->Build();
 
-         indexEntryNumbers[i] = joinIndex->GetFirstEntryNumber(valPtrs);
-      }
+      indexEntryNumbers.push_back(joinIndex->GetFirstEntryNumber(valPtrs));
    }
 
-   for (auto &[fieldName, fieldContext] : fFieldContexts) {
-      if (!fieldContext.IsAuxiliary() || !IsUsingIndex()) {
-         auto &value = fEntry->GetValue(fieldContext.fToken);
-         value.Read(fLocalEntryNumber);
+   // For each auxiliary field, load its value according to the entry number we just found of the ntuple it belongs to.
+   for (const auto &[_, fieldContext] : fFieldContexts) {
+      if (!fieldContext.IsAuxiliary())
          continue;
-      }
 
       auto &value = fEntry->GetValue(fieldContext.fToken);
       if (indexEntryNumbers[fieldContext.fNTupleIdx - 1] == kInvalidNTupleIndex) {

@@ -328,6 +328,7 @@ Bool_t TWebCanvas::IsJSSupportedClass(TObject *obj, Bool_t many_primitives)
                             {"TEllipse", true, true},  // can be handled via TWebPainter, disable for large number of primitives (like in greyscale.C)
                             {"TText"},
                             {"TLatex"},
+                            {"TLink"},
                             {"TAnnotation"},
                             {"TMathText"},
                             {"TMarker"},
@@ -368,7 +369,7 @@ Bool_t TWebCanvas::IsJSSupportedClass(TObject *obj, Bool_t many_primitives)
 /// If custom path was configured in RWebWindowsManager::AddServerLocation, it can be used in module paths.
 /// If started with "load:" prefix, code will be loaded with `loadScript` function of JSROOT (old, deprecated way)
 /// Script also can be a plain JavaScript code which imports JSROOT and provides draw function for custom classes
-/// See tutorials/webgui/custom/custom.mjs demonstrating such example
+/// See tutorials/visualisation/webgui/custom/custom.mjs demonstrating such example
 
 void TWebCanvas::SetCustomScripts(const std::string &src)
 {
@@ -529,6 +530,8 @@ void TWebCanvas::CreateObjectSnapshot(TPadWebSnapshot &master, TPad *pad, TObjec
    TVirtualPS *saveps = gVirtualPS;
 
    TWebPS ps;
+   ps.GetPainting()->SetClassName(obj->ClassName());
+   ps.GetPainting()->SetObjectName(obj->GetName());
    gVirtualPS = masterps ? masterps : &ps;
    if (painter)
       painter->SetPainting(ps.GetPainting());
@@ -768,6 +771,17 @@ void TWebCanvas::CreatePadSnapshot(TPadWebSnapshot &paddata, TPad *pad, Long64_t
       } else if (obj->InheritsFrom(TPaveText::Class())) {
          if (strcmp(obj->GetName(), "title") == 0)
             title = static_cast<TPaveText *>(obj);
+      } else if (obj->InheritsFrom(TButton::Class())) {
+         auto btn = (TButton *) obj;
+         auto text = dynamic_cast<TText *> (btn->GetListOfPrimitives()->First());
+         if (text) {
+            text->SetTitle(btn->GetTitle());
+            text->SetTextSize(btn->GetTextSize());
+            text->SetTextFont(btn->GetTextFont());
+            text->SetTextAlign(btn->GetTextAlign());
+            text->SetTextColor(btn->GetTextColor());
+            text->SetTextAngle(btn->GetTextAngle());
+         }
       }
    }
 
@@ -777,7 +791,7 @@ void TWebCanvas::CreatePadSnapshot(TPadWebSnapshot &paddata, TPad *pad, Long64_t
 
       frame = pad->GetFrame();
       if(frame)
-         primitives->AddFirst(frame);
+         primitives->AddFirst(frame, "");
    }
 
    if (!need_title.empty() && gStyle->GetOptTitle()) {
@@ -796,7 +810,7 @@ void TWebCanvas::CreatePadSnapshot(TPadWebSnapshot &paddata, TPad *pad, Long64_t
             title->SetTextSize(gStyle->GetTitleFontSize());
          title->AddText(need_title.c_str());
          title->SetBit(kCanDelete);
-         primitives->Add(title);
+         primitives->Add(title, title->GetOption());
       }
    }
 
@@ -2045,7 +2059,9 @@ Bool_t TWebCanvas::ProcessData(unsigned connid, const std::string &arg)
             auto btn = (TButton *) pad;
             const char *mthd = btn->GetMethod();
             if (mthd && *mthd) {
-               TVirtualPad::TContext ctxt(gROOT->GetSelectedPad(), kTRUE, kTRUE);
+               auto cpad = gROOT->GetSelectedPad();
+               if (cpad)
+                  cpad->cd();
                gROOT->ProcessLine(mthd);
             }
             return kTRUE;

@@ -479,7 +479,7 @@ IncrementalJIT::IncrementalJIT(
       // memory segments; the default InProcessMemoryManager (which is mostly
       // copied above) already does slab allocation to keep all segments
       // together which is needed for exception handling support.
-      unsigned PageSize = *sys::Process::getPageSize();
+      unsigned PageSize = cantFail(sys::Process::getPageSize());
       auto ObjLinkingLayer = std::make_unique<ObjectLinkingLayer>(
           ES, std::make_unique<ClingJITLinkMemoryManager>(PageSize));
       ObjLinkingLayer->addPlugin(std::make_unique<EHFrameRegistrationPlugin>(
@@ -682,7 +682,19 @@ IncrementalJIT::addOrReplaceDefinition(StringRef Name,
   bool Defined = false;
   for (auto* Dylib :
        {&Jit->getMainJITDylib(), Jit->getPlatformJITDylib().get()}) {
-    if (Dylib->remove({It->first})) {
+    if (Error Err = Dylib->remove({It->first})) {
+      Err = handleErrors(std::move(Err),
+                         [&](std::unique_ptr<SymbolsNotFound> Err) -> Error {
+                           // This is fine, we will try in the next Dylib.
+                           return Error::success();
+                         });
+
+      if (Err) {
+        logAllUnhandledErrors(std::move(Err), errs(),
+                              "[IncrementalJIT] remove() failed: ");
+        return orc::ExecutorAddr();
+      }
+
       continue;
     }
 
@@ -718,6 +730,7 @@ void* IncrementalJIT::getSymbolAddress(StringRef Name, bool IncludeHostSymbols){
   Expected<llvm::orc::ExecutorAddr> Symbol =
       Jit->lookup(Jit->getMainJITDylib(), Name);
   if (!Symbol) {
+    consumeError(Symbol.takeError());
     // FIXME: We should take advantage of the fact that all process symbols
     // are now in a separate JITDylib; see also the comments and ideas in
     // IncrementalExecutor::getAddressOfGlobal().

@@ -4,7 +4,7 @@ const version_id = 'dev',
 
 /** @summary version date
   * @desc Release date in format day/month/year like '14/04/2022' */
-version_date = '28/11/2024',
+version_date = '11/12/2024',
 
 /** @summary version id and date
   * @desc Produced by concatenation of {@link version_id} and {@link version_date}
@@ -208,6 +208,8 @@ settings = {
    CanvasWidth: 1200,
    /** @summary Default canvas height */
    CanvasHeight: 800,
+   /** @summary Canvas pixel ratio between viewport and display, default 1 */
+   CanvasScale: 1,
    /** @summary Enable or disable tooltips, default on */
    Tooltip: !nodejs,
    /** @summary Time in msec for appearance of tooltips, 0 - no animation */
@@ -435,6 +437,8 @@ gStyle = {
    fCandleBoxRange: 0.5,
    fCandleScaled: false,
    fViolinScaled: true,
+   fCandleCircleLineWidth: 1,
+   fCandleCrossLineWidth: 1,
    fOrthoCamera: false,
    fXAxisExpXOffset: 0,
    fXAxisExpYOffset: 0,
@@ -1078,7 +1082,7 @@ const prROOT = 'ROOT.', clTObject = 'TObject', clTNamed = 'TNamed', clTString = 
       clTPaveLabel = 'TPaveLabel', clTPaveClass = 'TPaveClass', clTDiamond = 'TDiamond',
       clTLegend = 'TLegend', clTLegendEntry = 'TLegendEntry',
       clTPaletteAxis = 'TPaletteAxis', clTImagePalette = 'TImagePalette',
-      clTText = 'TText', clTLatex = 'TLatex', clTMathText = 'TMathText', clTAnnotation = 'TAnnotation',
+      clTText = 'TText', clTLink = 'TLink', clTLatex = 'TLatex', clTMathText = 'TMathText', clTAnnotation = 'TAnnotation',
       clTColor = 'TColor', clTLine = 'TLine', clTBox = 'TBox', clTPolyLine = 'TPolyLine',
       clTPolyLine3D = 'TPolyLine3D', clTPolyMarker3D = 'TPolyMarker3D',
       clTAttPad = 'TAttPad', clTPad = 'TPad', clTCanvas = 'TCanvas', clTFrame = 'TFrame', clTAttCanvas = 'TAttCanvas',
@@ -1166,7 +1170,7 @@ function create(typename, target) {
          extend(obj, { fFillColor: gStyle.fStatColor, fFillStyle: gStyle.fStatStyle,
                        fTextFont: gStyle.fStatFont, fTextSize: gStyle.fStatFontSize, fTextColor: gStyle.fStatTextColor,
                        fBorderSize: gStyle.fStatBorderSize,
-                       fOptFit: 0, fOptStat: 0, fFitFormat: '', fStatFormat: '', fParent: null });
+                       fOptFit: gStyle.fOptFit, fOptStat: gStyle.fOptStat, fFitFormat: gStyle.fFitFormat, fStatFormat: gStyle.fStatFormat, fParent: null });
          break;
       case clTLegend:
          create(clTPave, obj);
@@ -1190,12 +1194,12 @@ function create(typename, target) {
       case clTText:
          create(clTNamed, obj);
          create(clTAttText, obj);
-         extend(obj, { fLimitFactorSize: 3, fOriginSize: 0.04 });
+         extend(obj, { fX: 0, fY: 0 });
          break;
       case clTLatex:
          create(clTText, obj);
          create(clTAttLine, obj);
-         extend(obj, { fX: 0, fY: 0 });
+         extend(obj, { fLimitFactorSize: 3, fOriginSize: 0.04 });
          break;
       case clTObjString:
          create(clTObject, obj);
@@ -1925,7 +1929,7 @@ export { version_id, version_date, version, source_dir, isNodeJs, isBatchMode, s
          clTList, clTHashList, clTMap, clTObjArray, clTClonesArray,
          clTAttLine, clTAttFill, clTAttMarker, clTAttText,
          clTPave, clTPaveText, clTPavesText, clTPaveStats, clTPaveLabel, clTPaveClass, clTDiamond,
-         clTLegend, clTLegendEntry, clTPaletteAxis, clTImagePalette, clTText, clTLatex, clTMathText, clTAnnotation, clTMultiGraph,
+         clTLegend, clTLegendEntry, clTPaletteAxis, clTImagePalette, clTText, clTLink, clTLatex, clTMathText, clTAnnotation, clTMultiGraph,
          clTColor, clTLine, clTBox, clTPolyLine, clTPad, clTCanvas, clTFrame, clTAttCanvas, clTGaxis,
          clTAxis, clTStyle, clTH1, clTH1I, clTH1D, clTH2, clTH2I, clTH2F, clTH3, clTF1, clTF2, clTF3,
          clTProfile, clTProfile2D, clTProfile3D, clTHStack,

@@ -17,7 +17,7 @@ TEST(RNTupleBulk, Simple)
    RFieldBase::RBulk bulk = reader->GetModel().CreateBulk("int");
 
    auto mask = std::make_unique<bool[]>(10);
-   std::fill(mask.get(), mask.get() + 10, true);
+   std::fill(mask.get(), mask.get() + 10, false /* the optimization for simple fields should ignore the mask */);
    auto intArr5 = static_cast<int *>(bulk.ReadBulk(RClusterIndex(0, 0), mask.get(), 5));
    for (int i = 0; i < 5; ++i) {
       EXPECT_EQ(i, intArr5[i]);
@@ -70,6 +70,11 @@ TEST(RNTupleBulk, Complex)
    auto SArr10 = static_cast<CustomStruct *>(bulk.ReadBulk(RClusterIndex(0, 0), mask.get(), 10));
    for (int i = 0; i < 10; ++i) {
       EXPECT_FLOAT_EQ((i % 2 == 0) ? 0.0 : float(i), SArr10[i].a);
+   }
+
+   auto SArrAll = static_cast<CustomStruct *>(bulk.ReadBulk(RClusterIndex(0, 0), nullptr, 10));
+   for (int i = 0; i < 10; ++i) {
+      EXPECT_FLOAT_EQ(float(i), SArrAll[i].a);
    }
 }
 
@@ -211,7 +216,7 @@ TEST(RNTupleBulk, Adopted)
 
    auto buf2 = std::make_unique<ROOT::RVecI[]>(10);
    bulkI.AdoptBuffer(buf2.get(), 5);
-   EXPECT_THROW(bulkI.ReadBulk(RClusterIndex(0, 0), mask.get(), 10), RException);
+   EXPECT_THROW(bulkI.ReadBulk(RClusterIndex(0, 0), mask.get(), 10), ROOT::RException);
    bulkI.ReadBulk(RClusterIndex(0, 0), mask.get(), 5);
    for (int i = 0; i < 5; ++i) {
       EXPECT_EQ(i, buf2[i].size());

@@ -206,7 +206,7 @@ These three color schemes are available as color sets with 6, 8, and 10 colors, 
 (`P` for Petroff or Preferred).
 
 Begin_Macro
-../../../tutorials/graphics/accessiblecolorschemes.C
+../../../tutorials/visualisation/graphics/accessiblecolorschemes.C
 End_Macro
 
 The example thstackcolorscheme.C illustrates how to use these color schemes in THStack drawings.
@@ -312,7 +312,7 @@ display plots using different palettes on the same pad.
 The tutorial multipalette.C illustrates this feature.
 
 Begin_Macro(source)
-../../../tutorials/graphs/multipalette.C
+../../../tutorials/visualisation/graphs/multipalette.C
 End_Macro
 
 \since **6.26:**
@@ -358,8 +358,9 @@ As explained in [Crameri, F., Shephard, G.E. & Heron, P.J. The misuse of colour 
 Nat Commun 11, 5444 (2020)](https://doi.org/10.1038/s41467-020-19160-7) some color maps
 can visually distord data, specially for people with colour-vision deficiencies.
 
-For instance one can immediately see the [disadvantages of the Rainbow color map](https://root.cern.ch/rainbow-color-map),
-which is misleading for colour-blinded people in a 2D plot (not so much in a 3D surfaces).
+For instance one can immediately see the [disadvantages of the Rainbow color
+map](https://root.cern.ch/rainbow-color-map), which is misleading for colour-blinded people in a 2D plot (not so much in
+a 3D surfaces).
 
 The `kCMYK` palette, is also not great because it's dark, then lighter, then
 half-dark again. Some others, like `kAquamarine`, have almost no contrast therefore it would
@@ -1051,7 +1052,7 @@ Or if you prefer to activate GL for a single canvas `c`, then use `c->SetSupport
 The following macro gives an example of transparency usage:
 
 Begin_Macro(source)
-../../../tutorials/graphics/transparency.C
+../../../tutorials/visualisation/graphics/transparency.C
 End_Macro
 
 */
@@ -2483,9 +2484,9 @@ ULong_t TColor::RGB2Pixel(Int_t r, Int_t g, Int_t b)
    if (b > 255) b = 255;
 
    ColorStruct_t color;
-   color.fRed   = UShort_t(r * 257);  // 65535/255
-   color.fGreen = UShort_t(g * 257);
-   color.fBlue  = UShort_t(b * 257);
+   color.fRed   = UShort_t(r * 256);  // 65536/256
+   color.fGreen = UShort_t(g * 256);
+   color.fBlue  = UShort_t(b * 256);
    color.fMask  = kDoRed | kDoGreen | kDoBlue;
    gVirtualX->AllocColor(gVirtualX->GetColormap(), color);
    return color.fPixel;
@@ -2516,9 +2517,13 @@ void TColor::Pixel2RGB(ULong_t pixel, Int_t &r, Int_t &g, Int_t &b)
    ColorStruct_t color;
    color.fPixel = pixel;
    gVirtualX->QueryColor(gVirtualX->GetColormap(), color);
-   r = color.fRed / 257;
-   g = color.fGreen / 257;
-   b = color.fBlue / 257;
+   // color is between 0 and 65535 inclusive.
+   // We need to move it to the 0 to 255 range (inclusive).
+   // So we need to resample the 65536 values into 256 indices.
+   // This would mean equal blocks of 256 high-res values per color index.
+   r = color.fRed / 256;
+   g = color.fGreen / 256;
+   b = color.fBlue / 256;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

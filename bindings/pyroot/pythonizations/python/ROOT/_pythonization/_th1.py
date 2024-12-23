@@ -167,7 +167,7 @@ Further examples can be found in the tutorials:
 """
 
 from . import pythonization
-
+from ROOT._pythonization._memory_utils import _constructor_releasing_ownership, _SetDirectory_SetOwnership
 
 # Multiplication by constant
 
@@ -213,44 +213,26 @@ def _FillWithNumpyArray(self, *args):
         return self._Fill(*args)
 
 
-def _TH1_Constructor(self, *args, **kwargs):
-    """
-    Forward the arguments to the C++ constructor and give up ownership if the
-    TH1 is attached to a TFile, which is the owner in that case.
-    """
-    import ROOT
+def inject_constructor_releasing_ownership(klass):
+    klass._cpp_constructor = klass.__init__
+    klass.__init__ = _constructor_releasing_ownership
 
-    self._cpp_constructor(*args, **kwargs)
-    tdir = self.GetDirectory()
-    if tdir and type(tdir).__cpp_name__ == "TFile":
-        ROOT.SetOwnership(self, False)
 
 # The constructors need to be pythonized for each derived class separately:
+_th1_derived_classes_to_pythonize = [
+    "TH1C",
+    "TH1S",
+    "TH1I",
+    "TH1L",
+    "TH1F",
+    "TH1D",
+    "TH1K",
+    "TProfile",
+]
 
-@pythonization('TH1D')
-def pythonize_th1(klass):
-    klass._cpp_constructor = klass.__init__
-    klass.__init__ = _TH1_Constructor
+for klass in _th1_derived_classes_to_pythonize:
+    pythonization(klass)(inject_constructor_releasing_ownership)
 
-@pythonization('TH1F')
-def pythonize_th1(klass):
-    klass._cpp_constructor = klass.__init__
-    klass.__init__ = _TH1_Constructor
-
-@pythonization('THDF')
-def pythonize_th1(klass):
-    klass._cpp_constructor = klass.__init__
-    klass.__init__ = _TH1_Constructor
-
-@pythonization('TH2F')
-def pythonize_th1(klass):
-    klass._cpp_constructor = klass.__init__
-    klass.__init__ = _TH1_Constructor
-
-@pythonization('TProfile')
-def pythonize_th1(klass):
-    klass._cpp_constructor = klass.__init__
-    klass.__init__ = _TH1_Constructor
 
 @pythonization('TH1')
 def pythonize_th1(klass):
@@ -263,3 +245,6 @@ def pythonize_th1(klass):
     # Support hist.Fill(numpy_array) and hist.Fill(numpy_array, numpy_array)
     klass._Fill = klass.Fill
     klass.Fill = _FillWithNumpyArray
+
+    klass._Original_SetDirectory = klass.SetDirectory
+    klass.SetDirectory = _SetDirectory_SetOwnership
